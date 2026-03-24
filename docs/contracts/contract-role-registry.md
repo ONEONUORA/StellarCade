@@ -82,3 +82,31 @@ pub fn get_admin(env: Env) -> Address
 
 `Address`
 
+### `bulk_assign_role`
+Assigns multiple roles in bulk. Requires admin authorization.
+
+```rust
+pub fn bulk_assign_role(env: Env, assignments: Vec<(Address, Symbol)>)
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `assignments` | `Vec<(Address` |
+
+### `bulk_revoke_role`
+Revokes multiple roles in bulk. Requires admin authorization.
+
+```rust
+pub fn bulk_revoke_role(env: Env, revocations: Vec<(Address, Symbol)>)
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `revocations` | `Vec<(Address` |
+

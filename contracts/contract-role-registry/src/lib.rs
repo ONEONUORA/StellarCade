@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, Symbol};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, Symbol, Vec};
 
 #[contracttype]
 #[derive(Clone)]
@@ -86,7 +86,41 @@ impl ContractRoleRegistry {
             .get(&DataKey::Admin)
             .expect("Not initialized")
     }
-}
+    /// Assigns multiple roles in bulk. Requires admin authorization.
+    pub fn bulk_assign_role(env: Env, assignments: Vec<(Address, Symbol)>) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
+        admin.require_auth();
 
+        for (target, role) in assignments.into_iter() {
+            let key = DataKey::Role(target.clone(), role.clone());
+            if !env.storage().persistent().has(&key) {
+                env.storage().persistent().set(&key, &());
+                RoleAssigned { target, role }.publish(&env);
+            }
+        }
+    }
+
+    /// Revokes multiple roles in bulk. Requires admin authorization.
+    pub fn bulk_revoke_role(env: Env, revocations: Vec<(Address, Symbol)>) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
+        admin.require_auth();
+
+        for (target, role) in revocations.into_iter() {
+            let key = DataKey::Role(target.clone(), role.clone());
+            if env.storage().persistent().has(&key) {
+                env.storage().persistent().remove(&key);
+                RoleRevoked { target, role }.publish(&env);
+            }
+        }
+    }
+}
 #[cfg(test)]
 mod test;
