@@ -242,4 +242,12 @@ export class SorobanClientError extends Error {
       retryable: false,
     });
   }
+
+  static userRejected(): SorobanClientError {
+    return new SorobanClientError({
+      code: SorobanErrorCode.UserRejected,
+      message: "Transaction was rejected by the user.",
+      retryable: false,
+    });
+  }
 }

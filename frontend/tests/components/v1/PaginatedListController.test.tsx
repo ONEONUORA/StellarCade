@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { PaginatedListController } from '../../../src/components/v1/PaginatedListController';

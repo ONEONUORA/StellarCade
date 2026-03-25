@@ -11,8 +11,8 @@
  *  - Snapshot: stable header snapshot
  */
 
-import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ContractEventFeed } from '@/components/v1/ContractEventFeed';
 import type { ContractEventFeedProps } from '@/components/v1/ContractEventFeed';
 import type { ContractEvent } from '@/types/contracts/events';

@@ -36,7 +36,6 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
     testId = 'tx-status-panel'
 }) => {
     const isFailed = phase === TxPhase.FAILED;
-    const isConfirmed = phase === TxPhase.CONFIRMED;
     const isPending = phase === TxPhase.PENDING || phase === TxPhase.SUBMITTED;
     const isIdle = phase === TxPhase.IDLE;
 

@@ -29,7 +29,7 @@ interface MockRoute {
  * Unmatched requests return 501 Not Implemented.
  */
 function installMockServer(routes: MockRoute[]): void {
-  global.fetch = fetchSpy = vi.fn((input, init) => {
+  const mockFn = vi.fn((input, init) => {
     const url = typeof input === 'string' ? input : (input as Request).url;
     const method = (
       (typeof input === 'string' ? init?.method : (input as Request).method) ?? 'GET'
@@ -50,6 +50,7 @@ function installMockServer(routes: MockRoute[]): void {
       json: async () => ({ message: `No mock for ${method} ${url}` }),
     } as Response);
   });
+  global.fetch = fetchSpy = mockFn as any;
 }
 
 function makeSessionStore(token: string | null = 'integration-token') {
@@ -64,8 +65,8 @@ function makeSessionStore(token: string | null = 'integration-token') {
 let fetchSpy: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  fetchSpy = vi.fn();
-  global.fetch = fetchSpy;
+  fetchSpy = vi.fn() as any;
+  global.fetch = fetchSpy as any;
   vi.clearAllMocks();
 });
 
