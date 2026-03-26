@@ -14,6 +14,16 @@ export interface FormFieldError {
   message: string;
 }
 
+export type FieldHintVariant = 'error' | 'warning' | 'info';
+
+export interface FieldHintProps {
+  message: string;
+  variant?: FieldHintVariant;
+  fieldId?: string;
+  className?: string;
+  testId?: string;
+}
+
 export interface FormErrorSummaryProps {
   /** Structured errors to display */
   errors: FormFieldError[];
@@ -129,5 +139,37 @@ export const FormErrorSummary: React.FC<FormErrorSummaryProps> = ({
 };
 
 FormErrorSummary.displayName = 'FormErrorSummary';
+
+export const FieldHint: React.FC<FieldHintProps> = ({
+  message,
+  variant = 'error',
+  fieldId,
+  className = '',
+  testId = 'field-hint',
+}) => {
+  const hintId = useId().replace(/:/g, '');
+
+  const variantClasses: Record<FieldHintVariant, string> = {
+    error: 'field-hint--error',
+    warning: 'field-hint--warning',
+    info: 'field-hint--info',
+  };
+
+  return (
+    <span
+      id={hintId}
+      className={`field-hint ${variantClasses[variant]} ${className}`.trim()}
+      role={variant === 'error' ? 'alert' : 'status'}
+      aria-live="polite"
+      aria-describedby={fieldId}
+      data-testid={testId}
+      data-variant={variant}
+    >
+      {message}
+    </span>
+  );
+};
+
+FieldHint.displayName = 'FieldHint';
 
 export default FormErrorSummary;

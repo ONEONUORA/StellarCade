@@ -9,7 +9,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import type {
-  ValidationResult,
   ValidationError,
   WagerBounds,
   StringConstraints,
@@ -18,11 +17,8 @@ import type {
 import {
   validateWager,
   validateGameId,
-  validateBadgeId,
   validateEnum,
   validateStellarAddress,
-  validateContractAddress,
-  validateSha256Hash,
   validateString,
   validateNumber,
   DEFAULT_WAGER_BOUNDS,
@@ -525,4 +521,44 @@ export function useFormValidation(fields: Record<string, FormField>) {
     touchAll,
     isValid,
   };
+}
+
+export type ValidationHintVariant = 'error' | 'warning' | 'info';
+
+export interface ValidationHint {
+  field: string;
+  message: string;
+  variant: ValidationHintVariant;
+}
+
+export function useFieldValidationHint(
+  field: string,
+  error: ValidationError | null,
+  warning?: string | null,
+  info?: string | null
+): ValidationHint | null {
+  return useMemo(() => {
+    if (error) {
+      return {
+        field,
+        message: error.message,
+        variant: 'error' as const,
+      };
+    }
+    if (warning) {
+      return {
+        field,
+        message: warning,
+        variant: 'warning' as const,
+      };
+    }
+    if (info) {
+      return {
+        field,
+        message: info,
+        variant: 'info' as const,
+      };
+    }
+    return null;
+  }, [field, error, warning, info]);
 }
