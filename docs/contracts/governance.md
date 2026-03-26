@@ -121,6 +121,24 @@ pub fn cancel(env: Env, admin: Address, proposal_id: u64) -> Result<(), Error>
 
 `Result<(), Error>`
 
+### `cancel_stale`
+Cancel a queued proposal that has exceeded the execution window.  ## Execution Window Rules - Queued proposals must be executed within `execution_window` ledgers after `eta` - Default execution window: 2x the timelock delay (e.g., if timelock=50 ledgers, window=100) - Anyone can call this function to clean up stale proposals - Prevents indefinite queue accumulation and governance stagnation  ## Requirements - Proposal must be in STATE_QUEUED - Current ledger must be >= eta + execution_window - Execution window = timelock_delay * 2 (conservative default)  ## Security - Cannot cancel active, executed, or already cancelled proposals - Prevents malicious actors from flooding the queue with stale proposals - Allows governance to remain responsive and current
+
+```rust
+pub fn cancel_stale(env: Env, proposal_id: u64) -> Result<(), Error>
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `proposal_id` | `u64` |
+
+#### Return Type
+
+`Result<(), Error>`
+
 ### `get_proposal`
 Get proposal details
 

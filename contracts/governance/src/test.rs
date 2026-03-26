@@ -377,7 +377,189 @@ fn test_non_admin_cannot_cancel() {
 }
 
 // -------------------------------------------------------------------
-// 7. Full lifecycle
+// 7. Cancel Stale (Execution Window Expiry)
+// -------------------------------------------------------------------
+
+#[test]
+fn test_cancel_stale_queued_proposal() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Vote with 100% for
+    s.gov_client.vote(&1u64, &s.voter1, &true);
+    s.gov_client.vote(&1u64, &s.voter2, &true);
+
+    // Advance past voting period (100 ledgers)
+    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    s.gov_client.queue(&1u64);
+
+    let proposal = s.gov_client.get_proposal(&1u64);
+    assert_eq!(proposal.state, STATE_QUEUED);
+    let _eta = proposal.eta;
+
+    // Execution window = timelock_delay * 2 = 50 * 2 = 100 ledgers
+    // Advance past eta + execution_window (eta + 100)
+    // We need to advance: (current + 51 to reach eta) + 100 = current + 151
+    env.ledger().set_sequence_number(env.ledger().sequence() + 151);
+
+    // Anyone can cancel stale (no auth needed for this test since we mock all)
+    s.gov_client.cancel_stale(&1u64);
+
+    let proposal = s.gov_client.get_proposal(&1u64);
+    assert_eq!(proposal.state, STATE_CANCELLED);
+}
+
+#[test]
+fn test_cancel_stale_premature_rejected() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Vote with 100% for
+    s.gov_client.vote(&1u64, &s.voter1, &true);
+    s.gov_client.vote(&1u64, &s.voter2, &true);
+
+    // Advance past voting period
+    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    s.gov_client.queue(&1u64);
+
+    // Try to cancel before execution window expires
+    // Only advance 50 ledgers (half of execution window)
+    env.ledger().set_sequence_number(env.ledger().sequence() + 50);
+
+    let result = s.gov_client.try_cancel_stale(&1u64);
+    assert!(result.is_err());
+
+    // Verify proposal is still queued
+    let proposal = s.gov_client.get_proposal(&1u64);
+    assert_eq!(proposal.state, STATE_QUEUED);
+}
+
+#[test]
+fn test_cancel_stale_active_proposal_rejected() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Try to cancel stale while proposal is still active
+    let result = s.gov_client.try_cancel_stale(&1u64);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_cancel_stale_executed_proposal_rejected() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Vote with 100% for
+    s.gov_client.vote(&1u64, &s.voter1, &true);
+    s.gov_client.vote(&1u64, &s.voter2, &true);
+
+    // Advance past voting period
+    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    s.gov_client.queue(&1u64);
+
+    // Advance past timelock
+    env.ledger().set_sequence_number(env.ledger().sequence() + 51);
+    s.gov_client.execute(&1u64, &payload);
+
+    // Try to cancel stale after execution
+    let result = s.gov_client.try_cancel_stale(&1u64);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_cancel_stale_already_cancelled_rejected() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Admin cancels first
+    s.gov_client.cancel(&s.admin, &1u64);
+
+    // Try to cancel stale again
+    let result = s.gov_client.try_cancel_stale(&1u64);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_execute_after_cancel_stale_rejected() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Vote with 100% for
+    s.gov_client.vote(&1u64, &s.voter1, &true);
+    s.gov_client.vote(&1u64, &s.voter2, &true);
+
+    // Advance past voting period
+    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    s.gov_client.queue(&1u64);
+
+    // Advance past execution window
+    env.ledger().set_sequence_number(env.ledger().sequence() + 151);
+    s.gov_client.cancel_stale(&1u64);
+
+    // Try to execute after cancellation
+    let result = s.gov_client.try_execute(&1u64, &payload);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_cancel_stale_defeated_proposal_rejected() {
+    let env = Env::default();
+    let s = setup(&env);
+    env.mock_all_auths();
+
+    let proposer = Address::generate(&env);
+    let payload = hash(&env, b"action:test");
+    s.gov_client.propose(&proposer, &1u64, &payload);
+
+    // Vote with more against than for (doesn't meet threshold)
+    s.gov_client.vote(&1u64, &s.voter1, &false);
+    s.gov_client.vote(&1u64, &s.voter2, &true);
+
+    // Advance past voting period
+    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    s.gov_client.queue(&1u64);
+
+    // Proposal should be defeated
+    let proposal = s.gov_client.get_proposal(&1u64);
+    assert_eq!(proposal.state, STATE_DEFEATED);
+
+    // Try to cancel stale (should fail because state is DEFEATED, not QUEUED)
+    let result = s.gov_client.try_cancel_stale(&1u64);
+    assert!(result.is_err());
+}
+
+// -------------------------------------------------------------------
+// 8. Full lifecycle
 // -------------------------------------------------------------------
 
 #[test]

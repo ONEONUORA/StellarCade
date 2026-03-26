@@ -13,8 +13,7 @@ require('dotenv').config();
 
 // Config and Utils
 const logger = require('./utils/logger');
-const db = require('./config/database');
-const redis = require('./config/redis');
+const { validateStartupConfig } = require('./config/startupValidation');
 
 // Middleware
 const correlationId = require('./middleware/correlation-id.middleware');
@@ -25,6 +24,10 @@ const apiVersionMiddleware = require('./middleware/api-version.middleware');
 const routes = require('./routes');
 
 const app = express();
+
+validateStartupConfig();
+const db = require('./config/database');
+const redis = require('./config/redis');
 
 /**
  * Standard Security and Utility Middleware
@@ -74,8 +77,8 @@ const gracefulShutdown = async () => {
       logger.info('Database connection closed.');
 
       // Redis client disconnect
-      if (redis.isOpen) {
-        await redis.quit();
+      if (redis.client && redis.client.isOpen) {
+        await redis.client.quit();
         logger.info('Redis connection closed.');
       }
 

@@ -438,6 +438,68 @@ impl Governance {
         Ok(())
     }
 
+    /// Cancel a queued proposal that has exceeded the execution window.
+    ///
+    /// ## Execution Window Rules
+    /// - Queued proposals must be executed within `execution_window` ledgers after `eta`
+    /// - Default execution window: 2x the timelock delay (e.g., if timelock=50 ledgers, window=100)
+    /// - Anyone can call this function to clean up stale proposals
+    /// - Prevents indefinite queue accumulation and governance stagnation
+    ///
+    /// ## Requirements
+    /// - Proposal must be in STATE_QUEUED
+    /// - Current ledger must be >= eta + execution_window
+    /// - Execution window = timelock_delay * 2 (conservative default)
+    ///
+    /// ## Security
+    /// - Cannot cancel active, executed, or already cancelled proposals
+    /// - Prevents malicious actors from flooding the queue with stale proposals
+    /// - Allows governance to remain responsive and current
+    pub fn cancel_stale(env: Env, proposal_id: u64) -> Result<(), Error> {
+        require_initialized(&env)?;
+
+        let proposal_key = DataKey::Proposal(proposal_id);
+        let mut proposal: Proposal = env
+            .storage()
+            .persistent()
+            .get(&proposal_key)
+            .ok_or(Error::ProposalNotFound)?;
+
+        // Can only cancel queued proposals
+        if proposal.state != STATE_QUEUED {
+            return Err(Error::InvalidProposalState);
+        }
+
+        // Calculate execution window: 2x timelock delay after eta
+        let timelock_delay: u32 = env.storage().instance().get(&DataKey::TimelockDelay).unwrap();
+        let execution_window = timelock_delay
+            .checked_mul(2)
+            .ok_or(Error::Overflow)?;
+
+        let expiry_ledger = proposal
+            .eta
+            .checked_add(execution_window)
+            .ok_or(Error::Overflow)?;
+
+        let current_ledger = env.ledger().sequence();
+
+        // Check if execution window has passed
+        if current_ledger < expiry_ledger {
+            return Err(Error::TimelockNotExpired);
+        }
+
+        // Cancel the proposal
+        proposal.state = STATE_CANCELLED;
+        env.storage().persistent().set(&proposal_key, &proposal);
+        env.storage()
+            .persistent()
+            .extend_ttl(&proposal_key, PERSISTENT_BUMP_LEDGERS, PERSISTENT_BUMP_LEDGERS);
+
+        ProposalCancelled { proposal_id }.publish(&env);
+
+        Ok(())
+    }
+
     /// Get proposal details
     pub fn get_proposal(env: Env, proposal_id: u64) -> Result<Proposal, Error> {
         env.storage()
