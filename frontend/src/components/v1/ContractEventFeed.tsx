@@ -33,6 +33,46 @@ import './ContractEventFeed.css';
 // Types
 // ---------------------------------------------------------------------------
 
+export type EventSeverity = 'info' | 'warning' | 'error' | 'success';
+
+export interface SeverityMapping {
+  [eventType: string]: EventSeverity;
+}
+
+export interface FilterChipConfig {
+  label: string;
+  value: string;
+  active: boolean;
+  count?: number;
+}
+
+export const DEFAULT_SEVERITY_MAPPING: SeverityMapping = {
+  game_start: 'info',
+  game_end: 'success',
+  bet_placed: 'info',
+  win: 'success',
+  loss: 'error',
+  error: 'error',
+  warning: 'warning',
+  transfer: 'info',
+  mint: 'success',
+  burn: 'warning',
+};
+
+export function getEventSeverity(
+  eventType: string | undefined,
+  mapping: SeverityMapping = DEFAULT_SEVERITY_MAPPING
+): EventSeverity {
+  if (!eventType) return 'info';
+  const normalizedType = eventType.toLowerCase().replace(/[-_]/g, '_');
+  for (const [key, severity] of Object.entries(mapping)) {
+    if (normalizedType.includes(key.toLowerCase().replace(/[-_]/g, '_'))) {
+      return severity;
+    }
+  }
+  return 'info';
+}
+
 export interface ContractEventFeedProps {
   /**
    * The Soroban contract ID to subscribe to.
@@ -86,6 +126,15 @@ export interface ContractEventFeedProps {
    */
   onNewEvent?: (event: ContractEvent) => void;
 
+  /** Available event type filters as clickable chips. */
+  eventTypeFilters?: FilterChipConfig[];
+
+  /** Callback when an event type filter chip is toggled. */
+  onEventTypeFilterToggle?: (value: string) => void;
+
+  /** Custom severity mapping for event types. */
+  severityMapping?: SeverityMapping;
+
   /** Custom className applied to the root element. */
   className?: string;
 
@@ -132,10 +181,11 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, testId }) => {
 interface EventRowProps {
   event: ContractEvent;
   onClick?: (event: ContractEvent) => void;
+  severity?: EventSeverity;
   testId?: string;
 }
 
-const EventRow: React.FC<EventRowProps> = ({ event, onClick, testId }) => {
+const EventRow: React.FC<EventRowProps> = ({ event, onClick, severity, testId }) => {
   const handleClick = useCallback(() => {
     onClick?.(event);
   }, [event, onClick]);
@@ -167,10 +217,11 @@ const EventRow: React.FC<EventRowProps> = ({ event, onClick, testId }) => {
 
   return (
     <li
-      className={`cef-event-row${isClickable ? ' cef-event-row--clickable' : ''}`}
+      className={`cef-event-row${isClickable ? ' cef-event-row--clickable' : ''}${severity ? ` cef-event-row--${severity}` : ''}`}
       data-testid={testId ? `${testId}-row-${event.id}` : `cef-row-${event.id}`}
       data-event-id={event.id}
       data-event-type={event.type ?? 'unknown'}
+      data-event-severity={severity ?? 'info'}
       onClick={isClickable ? handleClick : undefined}
       onKeyDown={isClickable ? handleKeyDown : undefined}
       tabIndex={isClickable ? 0 : undefined}
@@ -218,6 +269,9 @@ export const ContractEventFeed: React.FC<ContractEventFeedProps> = ({
   autoStart = true,
   onEventClick,
   onNewEvent,
+  eventTypeFilters,
+  onEventTypeFilterToggle,
+  severityMapping = DEFAULT_SEVERITY_MAPPING,
   className = '',
   testId = 'contract-event-feed',
 }) => {
@@ -444,9 +498,24 @@ export const ContractEventFeed: React.FC<ContractEventFeedProps> = ({
       </header>
 
       {/* ── Active filters strip ── */}
-      {(eventTypeFilter || contractSourceFilter || timeWindowMs) && (
+      {(eventTypeFilter || contractSourceFilter || timeWindowMs || (eventTypeFilters && eventTypeFilters.length > 0)) && (
         <div className="cef__filters" aria-label="Active filters" data-testid={`${testId}-filters`}>
-          {eventTypeFilter && (
+          {eventTypeFilters && eventTypeFilters.length > 0 && eventTypeFilters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`cef__filter-chip cef__filter-chip--toggle${filter.active ? ' cef__filter-chip--active' : ''}`}
+              onClick={() => onEventTypeFilterToggle?.(filter.value)}
+              aria-pressed={filter.active}
+              data-testid={`${testId}-filter-${filter.value}`}
+            >
+              {filter.label}
+              {filter.count !== undefined && (
+                <span className="cef__filter-chip__count">{filter.count}</span>
+              )}
+            </button>
+          ))}
+          {eventTypeFilter && !eventTypeFilters && (
             <span className="cef__filter-chip">
               type: <strong>{eventTypeFilter}</strong>
             </span>
@@ -483,14 +552,15 @@ export const ContractEventFeed: React.FC<ContractEventFeedProps> = ({
           data-testid={`${testId}-list`}
           reversed
         >
-          {filteredEvents.map((event) => (
-            <EventRow
-              key={event.id}
-              event={event}
-              onClick={onEventClick}
-              testId={testId}
-            />
-          ))}
+        {filteredEvents.map((event) => (
+          <EventRow
+            key={event.id}
+            event={event}
+            onClick={onEventClick}
+            severity={getEventSeverity(event.type, severityMapping)}
+            testId={testId}
+          />
+        ))}
         </ol>
       ) : (
         !mappedError && (

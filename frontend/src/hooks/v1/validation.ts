@@ -526,3 +526,43 @@ export function useFormValidation(fields: Record<string, FormField>) {
     isValid,
   };
 }
+
+export type ValidationHintVariant = 'error' | 'warning' | 'info';
+
+export interface ValidationHint {
+  field: string;
+  message: string;
+  variant: ValidationHintVariant;
+}
+
+export function useFieldValidationHint(
+  field: string,
+  error: ValidationError | null,
+  warning?: string | null,
+  info?: string | null
+): ValidationHint | null {
+  return useMemo(() => {
+    if (error) {
+      return {
+        field,
+        message: error.message,
+        variant: 'error' as const,
+      };
+    }
+    if (warning) {
+      return {
+        field,
+        message: warning,
+        variant: 'warning' as const,
+      };
+    }
+    if (info) {
+      return {
+        field,
+        message: info,
+        variant: 'info' as const,
+      };
+    }
+    return null;
+  }, [field, error, warning, info]);
+}
