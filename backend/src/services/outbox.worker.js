@@ -255,7 +255,9 @@ const startWorker = async (options = {}) => {
     maxProcessingTime,
   });
 
-  while (true) {
+let running = true;
+  
+  while (running) {
     try {
       await processPendingEntries({
         batchSize,
