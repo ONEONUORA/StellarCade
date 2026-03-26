@@ -10,6 +10,12 @@ import type { WalletSessionMeta } from "../types/wallet-session";
 type Subscriber = (state: GlobalState) => void;
 
 const DEFAULT_KEY = "stc_global_state_v1";
+const BANNER_DISMISSALS_KEY = "stc_banner_dismissals_v1";
+
+export interface BannerDismissalEntry {
+  identity: string;
+  dismissedAt: number;
+}
 
 const initialState: GlobalState = {
   auth: { isAuthenticated: false },
@@ -171,6 +177,55 @@ export class GlobalStateStore {
     } catch (e) {
       return null;
     }
+  }
+}
+
+function isStorageAvailable(): boolean {
+  return typeof window !== "undefined" && typeof localStorage !== "undefined";
+}
+
+export function getPersistedBannerDismissals(): Record<string, BannerDismissalEntry> {
+  if (!isStorageAvailable()) {
+    return {};
+  }
+  try {
+    const raw = localStorage.getItem(BANNER_DISMISSALS_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, BannerDismissalEntry>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function isBannerDismissed(key: string, identity: string): boolean {
+  if (!key || !identity) {
+    return false;
+  }
+  const dismissals = getPersistedBannerDismissals();
+  return dismissals[key]?.identity === identity;
+}
+
+export function persistBannerDismissal(
+  key: string,
+  identity: string,
+  dismissed: boolean
+): void {
+  if (!isStorageAvailable() || !key || !identity) {
+    return;
+  }
+  try {
+    const dismissals = getPersistedBannerDismissals();
+    if (dismissed) {
+      dismissals[key] = { identity, dismissedAt: Date.now() };
+    } else {
+      delete dismissals[key];
+    }
+    localStorage.setItem(BANNER_DISMISSALS_KEY, JSON.stringify(dismissals));
+  } catch {
+    // no-op
   }
 }
 

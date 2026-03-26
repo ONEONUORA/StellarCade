@@ -7,8 +7,12 @@
  *
  */
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import type { ReactNode } from "react";
+import {
+  isBannerDismissed,
+  persistBannerDismissal,
+} from "../../services/global-state-store";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +46,12 @@ export interface NetworkGuardBannerProps {
 
   /** Optional custom content renderer */
   children?: ReactNode;
+  /** Persist dismissals across reloads for this banner (default: false). */
+  persistDismissal?: boolean;
+  /** Stable key used to store dismissal state (required when persistDismissal=true). */
+  dismissalKey?: string;
+  /** Versioned identity of the current banner message to prevent carryover. */
+  dismissalIdentity?: string;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -58,9 +68,26 @@ export const NetworkGuardBanner = React.memo(
     actionLabel = "Switch Network",
     show = true,
     children,
+    persistDismissal = false,
+    dismissalKey = "network-guard-banner",
+    dismissalIdentity,
   }: NetworkGuardBannerProps) => {
     const [isDismissed, setIsDismissed] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const resolvedIdentity = useMemo(
+      () =>
+        dismissalIdentity ??
+        `${network ?? "unknown"}:${normalizedNetwork}:${supportedNetworks.join("|")}`,
+      [dismissalIdentity, network, normalizedNetwork, supportedNetworks],
+    );
+
+    useEffect(() => {
+      if (!persistDismissal || !dismissible) {
+        setIsDismissed(false);
+        return;
+      }
+      setIsDismissed(isBannerDismissed(dismissalKey, resolvedIdentity));
+    }, [persistDismissal, dismissible, dismissalKey, resolvedIdentity]);
 
     // Determine if banner should be visible
     const shouldShow = useMemo(() => {
@@ -92,8 +119,11 @@ export const NetworkGuardBanner = React.memo(
     const handleDismiss = useCallback(() => {
       if (dismissible) {
         setIsDismissed(true);
+        if (persistDismissal) {
+          persistBannerDismissal(dismissalKey, resolvedIdentity, true);
+        }
       }
-    }, [dismissible]);
+    }, [dismissible, persistDismissal, dismissalKey, resolvedIdentity]);
 
     // Handle network switch action
     const handleSwitchNetwork = useCallback(async () => {
