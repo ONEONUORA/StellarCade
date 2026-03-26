@@ -82,3 +82,17 @@ pub fn get_roll(env: Env, game_id: u64) -> Result<Roll, Error>
 
 `Result<Roll, Error>`
 
+### `set_wager_limits`
+Admin-only update for the on-chain min and max wager settings. Rejects zero, negative, or inverted ranges.
+
+```rust
+pub fn set_wager_limits(env: Env, admin: Address, min_wager: i128, max_wager: i128) -> Result<(), Error>
+```
+
+### `get_wager_limits`
+Read the current wager limits used during bet placement.
+
+```rust
+pub fn get_wager_limits(env: Env) -> Result<WagerLimits, Error>
+```
+

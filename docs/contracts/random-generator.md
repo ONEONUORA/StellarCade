@@ -155,3 +155,21 @@ pub fn get_result(env: Env, request_id: u64) -> Result<FulfilledEntry, Error>
 
 `Result<FulfilledEntry, Error>`
 
+### `get_request_status`
+Return a request lifecycle snapshot for a request id. Missing requests return an explicit `Missing` state instead of failing.
+
+```rust
+pub fn get_request_status(env: Env, request_id: u64) -> Result<RequestStatus, Error>
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `request_id` | `u64` |
+
+#### Return Type
+
+`Result<RequestStatus, Error>`
+
