@@ -17,6 +17,7 @@ import {
   type RetryPolicy,
   type TransactionContext,
   type TransactionOrchestratorState,
+  type TransactionProgressSnapshot,
   type TransactionRequest,
   type TransactionResult,
   type TransactionStateSubscriber,
@@ -128,6 +129,7 @@ interface TransactionOrchestratorOptions {
 export class TransactionOrchestrator {
   private state: TransactionOrchestratorState = {
     phase: TransactionPhase.IDLE,
+    completedSteps: [],
     confirmations: 0,
     attempt: 0,
   };
@@ -151,6 +153,14 @@ export class TransactionOrchestrator {
     return { ...(this.state as TransactionOrchestratorState<TData>) };
   }
 
+  getProgressSnapshot(): TransactionProgressSnapshot {
+    return {
+      currentStep: this.state.phase,
+      completedSteps: [...this.state.completedSteps],
+      lastError: this.state.error,
+    };
+  }
+
   subscribe<TData = unknown>(
     subscriber: TransactionStateSubscriber<TData>,
   ): () => void {
@@ -166,6 +176,7 @@ export class TransactionOrchestrator {
   reset(): void {
     this.state = {
       phase: TransactionPhase.IDLE,
+      completedSteps: [],
       confirmations: 0,
       attempt: 0,
     };
@@ -201,6 +212,7 @@ export class TransactionOrchestrator {
 
     this.state = {
       phase: TransactionPhase.IDLE,
+      completedSteps: [],
       operation: request.operation,
       correlationId,
       confirmations: 0,
@@ -507,10 +519,20 @@ export class TransactionOrchestrator {
       return;
     }
 
+    const previousPhase = this.state.phase;
+    const completedSteps = [...this.state.completedSteps];
+
+    if (phase !== previousPhase && previousPhase !== TransactionPhase.IDLE) {
+      if (!completedSteps.includes(previousPhase)) {
+        completedSteps.push(previousPhase);
+      }
+    }
+
     this.state = {
       ...this.state,
       ...patch,
       phase,
+      completedSteps,
       confirmations: patch.confirmations ?? this.state.confirmations,
       attempt: patch.attempt ?? this.state.attempt,
     };

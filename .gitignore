@@ -56,3 +56,5 @@ Desktop.ini
 
 # Docker
 .docker_volumes/
+issue.md
+pr.md
