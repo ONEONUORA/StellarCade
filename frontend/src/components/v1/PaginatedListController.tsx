@@ -184,7 +184,7 @@ export const PaginatedListController: React.FC<PaginatedListControllerProps> = (
 
             <div className="pagination-settings-section">
                 <label htmlFor="pagination-page-size" className="pagination-label">
-                    Show
+                   Items per page
                 </label>
                 <select
                     id="pagination-page-size"
