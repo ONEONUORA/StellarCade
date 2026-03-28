@@ -277,7 +277,7 @@ describe("useAsyncAction Hook", () => {
     expect(result.current.isPendingSubmit).toBe(true);
 
     // Rapid second click — should be suppressed
-    let secondResult: string | undefined;
+    let secondResult: unknown;
     await act(async () => {
       secondResult = await result.current.run();
     });

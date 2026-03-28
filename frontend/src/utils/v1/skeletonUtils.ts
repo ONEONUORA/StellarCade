@@ -61,10 +61,10 @@ export function useReducedMotion(): boolean {
             mq.addEventListener("change", handler);
             return () => mq.removeEventListener("change", handler);
         } else {
-            // @ts-expect-error — legacy API fallback
+            // eslint-disable-next-line @typescript-eslint/no-deprecated
             mq.addListener(handler);
             return () => {
-                // @ts-expect-error — legacy API fallback
+                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 mq.removeListener(handler);
             };
         }
