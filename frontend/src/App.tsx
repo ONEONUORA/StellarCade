@@ -2,6 +2,8 @@ import React, { Suspense, lazy } from 'react';
 import GameLobby from './pages/GameLobby';
 import { I18nProvider, useI18n } from './i18n/provider';
 import LocaleSwitcher from './components/LocaleSwitcher';
+import Breadcrumbs from './components/BreadCrumbs';
+
 
 const DevContractCallSimulatorPanel = import.meta.env.DEV
   ? lazy(() =>
@@ -78,6 +80,7 @@ const AppContent: React.FC = () => {
         </nav>
         <LocaleSwitcher />
       </header>
+      <Breadcrumbs/>
       
       <main className="app-content" id="main-content">
         <RouteErrorBoundary>
