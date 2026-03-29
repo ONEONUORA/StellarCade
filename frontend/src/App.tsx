@@ -1,8 +1,11 @@
 import React, { Suspense, lazy } from 'react';
 import GameLobby from './pages/GameLobby';
+import ProfileSettings from './pages/ProfileSettings';
 import { I18nProvider, useI18n } from './i18n/provider';
 import LocaleSwitcher from './components/LocaleSwitcher';
 import { ModalStackProvider } from './components/v1/modal-stack';
+import { FeatureFlagsProvider } from './services/feature-flags';
+import CommandPalette, { type Command } from './components/v1/CommandPalette';
 
 const DevContractCallSimulatorPanel = import.meta.env.DEV
   ? lazy(() =>
@@ -64,17 +67,46 @@ class RouteErrorBoundary extends React.Component<
 
 const AppContent: React.FC = () => {
   const { t } = useI18n();
+  const [route, setRoute] = React.useState<'lobby' | 'profile' | 'games'>('lobby');
+
+  const commands: Command[] = [
+    {
+      id: 'go-lobby',
+      label: 'Go to Lobby',
+      description: 'Open the game lobby',
+      action: () => setRoute('lobby'),
+    },
+    {
+      id: 'go-profile',
+      label: 'Go to Profile Settings',
+      description: 'Open the profile settings page',
+      action: () => setRoute('profile'),
+    },
+  ];
 
   return (
     <div className="app-container">
+      <CommandPalette commands={commands} />
       <a href="#main-content" className="skip-link">Skip to main content</a>
       <header className="app-header" role="banner">
         <div className="logo">{t('app.title')}</div>
         <nav aria-label="Main navigation">
           <ul>
-            <li><a href="/" className="active">{t('nav.lobby')}</a></li>
-            <li><a href="/games">{t('nav.games')}</a></li>
-            <li><a href="/profile">{t('nav.profile')}</a></li>
+            <li>
+              <button type="button" onClick={() => setRoute('lobby')} className={route === 'lobby' ? 'active' : ''}>
+                {t('nav.lobby')}
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => setRoute('games')} className={route === 'games' ? 'active' : ''}>
+                {t('nav.games')}
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => setRoute('profile')} className={route === 'profile' ? 'active' : ''}>
+                {t('nav.profile')}
+              </button>
+            </li>
           </ul>
         </nav>
         <LocaleSwitcher />
@@ -82,7 +114,7 @@ const AppContent: React.FC = () => {
       
       <main className="app-content" id="main-content">
         <RouteErrorBoundary>
-          <GameLobby />
+          {route === 'profile' ? <ProfileSettings /> : <GameLobby />}
         </RouteErrorBoundary>
       </main>
 
@@ -107,11 +139,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <I18nProvider>
-      <ModalStackProvider>
-        <AppContent />
-      </ModalStackProvider>
-    </I18nProvider>
+    <FeatureFlagsProvider>
+      <I18nProvider>
+        <ModalStackProvider>
+          <AppContent />
+        </ModalStackProvider>
+      </I18nProvider>
+    </FeatureFlagsProvider>
   );
 };
 

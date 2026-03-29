@@ -36,10 +36,22 @@ export interface SavedFilterPreset {
 }
 
 // Complete global state
+export interface UserProfileState {
+  address: string;
+  username?: string;
+  createdAt: string;
+}
+
+export interface CommandPaletteState {
+  isOpen: boolean;
+}
+
 export interface GlobalState {
   auth: AuthState;
   wallet: WalletState;
   flags: AppFlags;
+  profile?: UserProfileState | null;
+  commandPalette: CommandPaletteState;
   /** Transient optimistic UI patches for game actions (not persisted). */
   optimisticPatches: Record<string, unknown>;
   /** Bounded snapshot of pending transaction UI state. */
@@ -59,6 +71,10 @@ export type GlobalAction =
   | { type: "OPTIMISTIC_CLEAR" }
   | { type: "PENDING_TX_SET"; payload: { snapshot: PendingTransactionSnapshot } }
   | { type: "PENDING_TX_CLEAR" }
+  | { type: "PROFILE_SET"; payload: { profile: UserProfileState } }
+  | { type: "PROFILE_CLEAR" }
+  | { type: "COMMAND_PALETTE_OPEN" }
+  | { type: "COMMAND_PALETTE_CLOSE" }
   | { type: "RESET_ALL" };
 
 // Domain errors

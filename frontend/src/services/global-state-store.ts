@@ -31,6 +31,8 @@ const initialState: GlobalState = {
   auth: { isAuthenticated: false },
   wallet: { connected: false },
   flags: {},
+  profile: null,
+  commandPalette: { isOpen: false },
   optimisticPatches: {},
   pendingTransaction: null,
 };
@@ -117,6 +119,14 @@ export class GlobalStateStore {
         return { ...state, pendingTransaction: action.payload.snapshot };
       case "PENDING_TX_CLEAR":
         return { ...state, pendingTransaction: null };
+      case "PROFILE_SET":
+        return { ...state, profile: action.payload.profile };
+      case "PROFILE_CLEAR":
+        return { ...state, profile: null };
+      case "COMMAND_PALETTE_OPEN":
+        return { ...state, commandPalette: { isOpen: true } };
+      case "COMMAND_PALETTE_CLOSE":
+        return { ...state, commandPalette: { isOpen: false } };
       case "RESET_ALL":
         return initialState;
       default:
@@ -139,6 +149,16 @@ export class GlobalStateStore {
         throw new ValidationError("wallet meta.address required");
     }
 
+    if (action.type === "PROFILE_SET") {
+      if (
+        !action.payload.profile ||
+        !action.payload.profile.address ||
+        !action.payload.profile.createdAt
+      ) {
+        throw new ValidationError("profile address and createdAt required");
+      }
+    }
+
     const next = this.reducer(this.state, action);
     this.state = next;
     // persist durable parts only (auth and flags). wallet considered ephemeral.
@@ -158,6 +178,15 @@ export class GlobalStateStore {
   public selectWallet(): WalletState {
     return this.state.wallet;
   }
+
+  public selectProfile(): GlobalState['profile'] {
+    return this.state.profile;
+  }
+
+  public selectCommandPaletteOpen(): boolean {
+    return this.state.commandPalette.isOpen;
+  }
+
   public selectFlag(key: string): boolean | undefined {
     return this.state.flags[key];
   }
@@ -167,6 +196,7 @@ export class GlobalStateStore {
       const payload = {
         auth: this.state.auth,
         flags: this.state.flags,
+        profile: this.state.profile,
         pendingTransaction: this.state.pendingTransaction,
         storedAt: Date.now(),
       };
@@ -184,6 +214,7 @@ export class GlobalStateStore {
       const parsed = JSON.parse(raw) as {
         auth?: AuthState;
         flags?: Record<string, boolean>;
+        profile?: GlobalState['profile'];
         pendingTransaction?: PendingTransactionSnapshot;
         storedAt?: number;
       };
@@ -201,6 +232,7 @@ export class GlobalStateStore {
         ...initialState,
         auth: parsed.auth ?? initialState.auth,
         flags: parsed.flags ?? initialState.flags,
+        profile: parsed.profile ?? initialState.profile,
         pendingTransaction,
       };
     } catch (e) {
