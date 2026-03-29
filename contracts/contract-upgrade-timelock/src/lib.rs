@@ -391,6 +391,24 @@ mod test {
     }
 
     #[test]
+    fn test_get_queued_upgrade_returns_none_after_cancel() {
+        let env = Env::default();
+        env.mock_all_auths();
+        set_time(&env, 1000);
+
+        let admin = Address::generate(&env);
+        let target = Address::generate(&env);
+        let contract_id = env.register_contract(None, ContractUpgradeTimelock);
+        let client = ContractUpgradeTimelockClient::new(&env, &contract_id);
+        client.init(&admin, &3600u64);
+
+        let uid = client.queue_upgrade(&target, &Symbol::new(&env, "H7"), &(1000 + 3600 + 1));
+        client.cancel_upgrade(&uid);
+
+        assert!(client.get_queued_upgrade(&uid).is_none());
+    }
+
+    #[test]
     fn test_get_queued_upgrade_ready() {
         let env = Env::default();
         env.mock_all_auths();

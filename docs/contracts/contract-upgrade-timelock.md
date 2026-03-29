@@ -96,7 +96,7 @@ Returns `None` in two deterministic cases:
 
 When `Some` is returned, the `is_ready` field is `true` iff `current_ledger_timestamp >= eta`, meaning the upgrade may be executed immediately. Consumers should treat `is_ready = false` as "still within the timelock window" and must not attempt execution.
 
-The entire view is computed in a single storage read, so there is no risk of partial state across multiple calls.
+The entire view is computed in a single storage read, so there is no risk of partial state within a single call/snapshot.
 
 #### Parameters
 
