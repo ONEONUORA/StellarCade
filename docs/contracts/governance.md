@@ -175,32 +175,6 @@ pub fn get_proposal_summary(env: Env, proposal_id: u64) -> ProposalSummary
 
 `ProposalSummary`
 
-### `get_vote_participation`
-Return quorum-focused participation data for a proposal in a single read. This accessor is deterministic and side-effect free.
-
-```rust
-pub fn get_vote_participation(env: Env, proposal_id: u64) -> ParticipationBreakdown
-```
-
-#### Parameters
-
-| Name | Type |
-|------|------|
-| `env` | `Env` |
-| `proposal_id` | `u64` |
-
-#### Return Type
-
-`ParticipationBreakdown`
-
-#### Behavior by Proposal Status
-
-- Missing proposal: `exists = false`, state is `STATE_PENDING`, and numeric fields are `0`.
-- Active proposal: `quorum_votes_gap` reports remaining votes required to reach quorum.
-- Defeated proposal: vote totals and quorum requirement are still returned, but `quorum_votes_gap = 0` (proposal is no longer in-flight).
-- Executed proposal: vote totals and quorum requirement are still returned, but `quorum_votes_gap = 0` (proposal is finalized).
-- Other non-active states (`STATE_SUCCEEDED`, `STATE_QUEUED`, `STATE_CANCELLED`) also report `quorum_votes_gap = 0`.
-
 ### `has_voted`
 Check if an address has voted on a proposal
 

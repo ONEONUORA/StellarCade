@@ -108,20 +108,6 @@ pub struct ProposalSummary {
     pub execution_eta: u32,
 }
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ParticipationBreakdown {
-    pub exists: bool,
-    pub proposal_id: u64,
-    pub state: u32,
-    pub for_votes: i128,
-    pub against_votes: i128,
-    pub total_votes: i128,
-    pub quorum_votes_required: i128,
-    pub quorum_votes_gap: i128,
-    pub quorum_reached: bool,
-}
-
 // ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
@@ -636,62 +622,6 @@ impl Governance {
             quorum_progress_bps,
             quorum_reached: total_votes >= quorum_votes_required,
             execution_eta: proposal_execution_eta(&env, &proposal),
-        }
-    }
-
-    /// Return vote participation totals with quorum requirement context.
-    ///
-    /// Behavior by state:
-    /// - Missing proposal: `exists = false`, numeric fields are zeroed.
-    /// - Active proposal: `quorum_votes_gap` shows votes still needed to reach quorum.
-    /// - Non-active proposal (defeated/succeeded/queued/executed/cancelled):
-    ///   `quorum_votes_gap` is always 0 because participation is no longer in-flight.
-    pub fn get_vote_participation(env: Env, proposal_id: u64) -> ParticipationBreakdown {
-        let Some(proposal) = env
-            .storage()
-            .persistent()
-            .get::<_, Proposal>(&DataKey::Proposal(proposal_id))
-        else {
-            return ParticipationBreakdown {
-                exists: false,
-                proposal_id,
-                state: STATE_PENDING,
-                for_votes: 0,
-                against_votes: 0,
-                total_votes: 0,
-                quorum_votes_required: 0,
-                quorum_votes_gap: 0,
-                quorum_reached: false,
-            };
-        };
-
-        let total_votes = proposal
-            .for_votes
-            .checked_add(proposal.against_votes)
-            .unwrap_or(i128::MAX);
-        let effective_state = effective_proposal_state(&env, &proposal, total_votes);
-        let quorum_votes_required = quorum_votes_required(&env);
-        let quorum_reached = total_votes >= quorum_votes_required;
-        let quorum_votes_gap = if effective_state == STATE_ACTIVE {
-            if quorum_reached {
-                0
-            } else {
-                quorum_votes_required.saturating_sub(total_votes)
-            }
-        } else {
-            0
-        };
-
-        ParticipationBreakdown {
-            exists: true,
-            proposal_id,
-            state: effective_state,
-            for_votes: proposal.for_votes,
-            against_votes: proposal.against_votes,
-            total_votes,
-            quorum_votes_required,
-            quorum_votes_gap,
-            quorum_reached,
         }
     }
 
