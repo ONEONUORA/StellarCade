@@ -30,10 +30,13 @@ import type {
   CreateProfileRequest,
   CreateProfileResponse,
   DepositResponse,
+  GetGameByIdResponse,
   GetGamesResponse,
   GetProfileResponse,
   PlayGameRequest,
   PlayGameResponse,
+  UpdateProfileRequest,
+  UpdateProfileResponse,
   WithdrawResponse,
   WalletAmountRequest,
 } from "../types/api-client";
@@ -274,34 +277,42 @@ export class ApiClient {
 
     // ── Retry loop ───────────────────────────────────────────────────────────
     let lastError: ApiClientError | undefined;
-
     try {
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         if (attempt > 0) {
           await sleep(INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1));
         }
 
-        // Check if signal is already aborted before starting a new attempt
         if (requestSignal?.aborted) {
-          const isTimeout = requestSignal.reason === "timeout";
           return {
             success: false,
             error: normalizeApiClientError(
               {
-                code: isTimeout ? "API_REQUEST_TIMEOUT" : "API_ABORTED",
+                code: requestSignal.reason === "timeout" ? "API_REQUEST_TIMEOUT" : "API_ABORTED",
                 domain: ErrorDomain.API,
                 severity: ErrorSeverity.TERMINAL,
-                message: isTimeout
-                  ? `Request timed out after ${opts.timeout}ms`
-                  : "Request was cancelled by the user.",
+                message:
+                  requestSignal.reason === "timeout"
+                    ? `Request timed out after ${opts.timeout}ms`
+                    : "Request was cancelled by the user.",
               },
-              {
-                category: "network",
-                originalMessage: String(requestSignal.reason || "Aborted"),
-              },
+              { category: "network", originalMessage: String(requestSignal.reason || "Aborted") },
             ),
           };
         }
+
+        const startTime = Date.now();
+        const attemptTraceId = attempt > 0 ? `${traceId}-retry-${attempt}` : traceId;
+        dispatchApiTrace({
+          traceId: attemptTraceId,
+          source: "ApiClient",
+          method,
+          url,
+          startTime,
+          endTime: null,
+          durationMs: null,
+          status: "pending",
+        });
 
         let response: Response;
         try {
@@ -312,43 +323,41 @@ export class ApiClient {
             signal: requestSignal,
           });
         } catch (networkErr: any) {
-          // Check for timeout/abort specifically
-          if (
-            networkErr.name === "AbortError" ||
-            networkErr === "timeout" ||
-            networkErr.message === "timeout"
-          ) {
-            const isTimeout =
-              networkErr === "timeout" ||
-              networkErr.message === "timeout" ||
-              requestSignal?.reason === "timeout";
-
-            const abortError = normalizeApiClientError(
-              {
-                code: isTimeout ? "API_REQUEST_TIMEOUT" : "API_ABORTED",
-                domain: ErrorDomain.API,
-                severity: ErrorSeverity.TERMINAL,
-                message: isTimeout
-                  ? `Request timed out after ${opts.timeout}ms`
-                  : "Request was cancelled by the user.",
-              },
-              {
-                category: "network",
-                originalMessage: networkErr.message || String(networkErr),
-              },
-            );
-            return { success: false, error: abortError };
-          }
-
-          // Network failure (fetch threw) — map and retry
+          const isAbort = networkErr?.name === "AbortError" || networkErr === "timeout";
           const mappedNetErr = normalizeApiClientError(
-            mapRpcError(networkErr, { url, attempt }),
+            isAbort
+              ? {
+                  code:
+                    networkErr === "timeout" || requestSignal?.reason === "timeout"
+                      ? "API_REQUEST_TIMEOUT"
+                      : "API_ABORTED",
+                  domain: ErrorDomain.API,
+                  severity: ErrorSeverity.TERMINAL,
+                  message:
+                    networkErr === "timeout" || requestSignal?.reason === "timeout"
+                      ? `Request timed out after ${opts.timeout}ms`
+                      : "Request was cancelled by the user.",
+                }
+              : mapRpcError(networkErr, { url, attempt }),
             {
               category: "network",
               originalMessage:
                 networkErr instanceof Error ? networkErr.message : String(networkErr),
             },
           );
+
+          dispatchApiTrace({
+            traceId: attemptTraceId,
+            source: "ApiClient",
+            method,
+            url,
+            startTime,
+            endTime: Date.now(),
+            durationMs: Date.now() - startTime,
+            status: "error",
+            errorData: mappedNetErr,
+          });
+
           lastError = mappedNetErr;
           if (mappedNetErr.severity === ErrorSeverity.RETRYABLE) continue;
           return { success: false, error: mappedNetErr };
@@ -356,11 +365,20 @@ export class ApiClient {
 
         if (response.ok) {
           const data = (await response.json()) as T;
+          dispatchApiTrace({
+            traceId: attemptTraceId,
+            source: "ApiClient",
+            method,
+            url,
+            startTime,
+            endTime: Date.now(),
+            durationMs: Date.now() - startTime,
+            status: "success",
+            statusCode: response.status,
+          });
           return { success: true, data };
         }
 
-        // Parse error body — backend emits { error: { message, code, status } }
-        // or { message }. We pass the parsed object to mapApiError.
         let errorBody: unknown;
         try {
           errorBody = await response.json();
@@ -368,50 +386,13 @@ export class ApiClient {
           errorBody = { status: response.status };
         }
 
-        // Attach the HTTP status to whatever shape was returned so mapApiError
-        // can pattern-match on it consistently.
         const rawWithStatus =
           typeof errorBody === "object" && errorBody !== null
-            ? {
-                ...(errorBody as Record<string, unknown>),
-                status: response.status,
-              }
+            ? { ...(errorBody as Record<string, unknown>), status: response.status }
             : { status: response.status };
 
         const mapped = normalizeApiClientError(
-          mapApiError(rawWithStatus, {
-            url,
-            attempt,
-            status: response.status,
-          }),
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        await sleep(INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1));
-      }
-
-      const startTime = Date.now();
-      dispatchApiTrace({
-        traceId: attempt > 0 ? `${traceId}-retry-${attempt}` : traceId,
-        source: "ApiClient",
-        method,
-        url,
-        startTime,
-        endTime: null,
-        durationMs: null,
-        status: "pending",
-      });
-
-      let response: Response;
-      try {
-        response = await fetch(url, {
-          method,
-          headers,
-          ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-        });
-      } catch (networkErr) {
-        // Network failure (fetch threw) — map and retry
-        const mappedNetErr = normalizeApiClientError(
-          mapRpcError(networkErr, { url, attempt }),
+          mapApiError(rawWithStatus, { url, attempt, status: response.status }),
           {
             status: response.status,
             originalMessage:
@@ -425,17 +406,8 @@ export class ApiClient {
         );
         lastError = mapped;
 
-        // Only retry RETRYABLE errors (5xx, 429, network)
-        if (mapped.severity !== ErrorSeverity.RETRYABLE) {
-          return { success: false, error: mapped };
-        }
-      }
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-
         dispatchApiTrace({
-          traceId: attempt > 0 ? `${traceId}-retry-${attempt}` : traceId,
+          traceId: attemptTraceId,
           source: "ApiClient",
           method,
           url,
@@ -443,88 +415,21 @@ export class ApiClient {
           endTime: Date.now(),
           durationMs: Date.now() - startTime,
           status: "error",
-          errorData: mappedNetErr,
-        });
-
-        lastError = mappedNetErr;
-        if (mappedNetErr.severity === ErrorSeverity.RETRYABLE) continue;
-        return { success: false, error: mappedNetErr };
-      }
-
-      if (response.ok) {
-        const data = (await response.json()) as T;
-        dispatchApiTrace({
-          traceId: attempt > 0 ? `${traceId}-retry-${attempt}` : traceId,
-          source: "ApiClient",
-          method,
-          url,
-          startTime,
-          endTime: Date.now(),
-          durationMs: Date.now() - startTime,
-          status: "success",
           statusCode: response.status,
+          errorData: mapped,
         });
-        return { success: true, data };
+
+        if (mapped.severity !== ErrorSeverity.RETRYABLE) {
+          return { success: false, error: mapped };
+        }
       }
 
-      // Parse error body — backend emits { error: { message, code, status } }
-      // or { message }. We pass the parsed object to mapApiError.
-      let errorBody: unknown;
-      try {
-        errorBody = await response.json();
-      } catch {
-        errorBody = { status: response.status };
-      }
-
-      // Attach the HTTP status to whatever shape was returned so mapApiError
-      // can pattern-match on it consistently.
-      const rawWithStatus =
-        typeof errorBody === "object" && errorBody !== null
-          ? {
-              ...(errorBody as Record<string, unknown>),
-              status: response.status,
-            }
-          : { status: response.status };
-
-      const mapped = normalizeApiClientError(
-        mapApiError(rawWithStatus, {
-          url,
-          attempt,
-          status: response.status,
-        }),
-        {
-          status: response.status,
-          originalMessage:
-            typeof errorBody === "object" &&
-            errorBody !== null &&
-            "message" in (errorBody as Record<string, unknown>) &&
-            typeof (errorBody as Record<string, unknown>).message === "string"
-              ? ((errorBody as Record<string, unknown>).message as string)
-              : undefined,
-        },
-      );
-      lastError = mapped;
-
-      dispatchApiTrace({
-        traceId: attempt > 0 ? `${traceId}-retry-${attempt}` : traceId,
-        source: "ApiClient",
-        method,
-        url,
-        startTime,
-        endTime: Date.now(),
-        durationMs: Date.now() - startTime,
-        status: "error",
-        statusCode: response.status,
-        errorData: mapped,
-      });
-
-      // Only retry RETRYABLE errors (5xx, 429, network)
-      if (mapped.severity !== ErrorSeverity.RETRYABLE) {
-        return { success: false, error: mapped };
+      return { success: false, error: lastError! };
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     }
-
-    return { success: false, error: lastError! };
   }
 
   // ── Public endpoint methods ────────────────────────────────────────────────
@@ -535,6 +440,27 @@ export class ApiClient {
    */
   async getGames(opts: ApiRequestOptions = {}): Promise<ApiResult<GetGamesResponse>> {
     return this._request<GetGamesResponse>("GET", "/games", undefined, false, opts);
+  }
+
+  /**
+   * `GET /api/games/:gameId` — no auth required.
+   */
+  async getGameById(
+    gameId: string,
+    opts: ApiRequestOptions = {},
+  ): Promise<ApiResult<GetGameByIdResponse>> {
+    const normalizedGameId = gameId.trim();
+    if (!normalizedGameId) {
+      return { success: false, error: makeValidationError("gameId is required") };
+    }
+
+    return this._request<GetGameByIdResponse>(
+      "GET",
+      `/games/${encodeURIComponent(normalizedGameId)}`,
+      undefined,
+      false,
+      opts,
+    );
   }
 
   /**

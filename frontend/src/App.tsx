@@ -9,8 +9,17 @@ import Breadcrumbs from './components/BreadCrumbs';
 import { ModalStackProvider } from './components/v1/modal-stack';
 import { FeatureFlagsProvider } from './services/feature-flags';
 import CommandPalette, { type Command } from './components/v1/CommandPalette';
-import { BrowserRouter } from 'react-router-dom';
+import {
+  BrowserRouter,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import { useErrorStore } from './store/errorStore';
+import GameDetail from './pages/GameDetail';
 
 const DevContractCallSimulatorPanel = import.meta.env.DEV
   ? lazy(() =>
@@ -221,20 +230,27 @@ function NotificationCenter(): React.JSX.Element | null {
 
 const AppContent: React.FC = () => {
   const { t } = useI18n();
-  const [route, setRoute] = React.useState<'lobby' | 'profile' | 'games'>('lobby');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const activeRoute = React.useMemo(() => {
+    if (location.pathname.startsWith('/profile')) return 'profile';
+    if (location.pathname.startsWith('/games')) return 'games';
+    return 'lobby';
+  }, [location.pathname]);
 
   const commands: Command[] = [
     {
       id: 'go-lobby',
       label: 'Go to Lobby',
       description: 'Open the game lobby',
-      action: () => setRoute('lobby'),
+      action: () => navigate('/'),
     },
     {
       id: 'go-profile',
       label: 'Go to Profile Settings',
       description: 'Open the profile settings page',
-      action: () => setRoute('profile'),
+      action: () => navigate('/profile'),
     },
   ];
 
@@ -248,19 +264,19 @@ const AppContent: React.FC = () => {
         <nav aria-label="Main navigation">
           <ul>
             <li>
-              <button type="button" onClick={() => setRoute('lobby')} className={route === 'lobby' ? 'active' : ''}>
+              <NavLink to="/" end className={activeRoute === 'lobby' ? 'active' : ''}>
                 {t('nav.lobby')}
-              </button>
+              </NavLink>
             </li>
             <li>
-              <button type="button" onClick={() => setRoute('games')} className={route === 'games' ? 'active' : ''}>
+              <NavLink to="/games" className={activeRoute === 'games' ? 'active' : ''}>
                 {t('nav.games')}
-              </button>
+              </NavLink>
             </li>
             <li>
-              <button type="button" onClick={() => setRoute('profile')} className={route === 'profile' ? 'active' : ''}>
+              <NavLink to="/profile" className={activeRoute === 'profile' ? 'active' : ''}>
                 {t('nav.profile')}
-              </button>
+              </NavLink>
             </li>
           </ul>
         </nav>
@@ -270,7 +286,14 @@ const AppContent: React.FC = () => {
       
       <main className="app-content" id="main-content">
         <RouteErrorBoundary>
-          {route === 'profile' ? <ProfileSettings /> : <GameLobby />}
+          <Routes>
+            <Route path="/" element={<GameLobby />} />
+            <Route path="/lobby" element={<Navigate to="/" replace />} />
+            <Route path="/games" element={<GameLobby />} />
+            <Route path="/games/:gameId" element={<GameDetail />} />
+            <Route path="/profile" element={<ProfileSettings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </RouteErrorBoundary>
       </main>
 

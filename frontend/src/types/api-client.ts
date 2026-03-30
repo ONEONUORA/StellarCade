@@ -74,6 +74,9 @@ export interface Game {
 /** Response shape for `GET /api/games`. */
 export type GetGamesResponse = Game[];
 
+/** Response shape for `GET /api/games/:gameId`. */
+export type GetGameByIdResponse = Game | null;
+
 // ── POST /api/games/play ─────────────────────────────────────────────────────
 
 /** Request body for `POST /api/games/play`. Requires auth. */
