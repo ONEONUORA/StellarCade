@@ -20,7 +20,7 @@ const rows: Row[] = [
 ];
 
 // Stub URL.createObjectURL / revokeObjectURL for happy-dom environment.
-let mockObjectUrl = 'blob:test';
+const mockObjectUrl = 'blob:test';
 let createObjectURLSpy: ReturnType<typeof vi.fn>;
 let revokeObjectURLSpy: ReturnType<typeof vi.fn>;
 let appendChildSpy: ReturnType<typeof vi.spyOn>;
