@@ -162,15 +162,16 @@ describe('downloadCsv', () => {
     const originalAppendChild = document.body.appendChild.bind(document.body);
     const originalRemoveChild = document.body.removeChild.bind(document.body);
 
-    document.body.appendChild = (node: Node) => {
-      const el = node as HTMLAnchorElement;
+    document.body.appendChild = (<T extends Node>(node: T): T => {
+      const el = node as unknown as HTMLAnchorElement;
       if (el.tagName === 'A') {
         clicks.push(el.download);
         el.click = () => {};
       }
-      return originalAppendChild(node);
-    };
-    document.body.removeChild = (node: Node) => originalRemoveChild(node);
+      return originalAppendChild(node) as T;
+    }) as typeof document.body.appendChild;
+    document.body.removeChild = (<T extends Node>(node: T): T =>
+      originalRemoveChild(node) as T) as typeof document.body.removeChild;
 
     const result = downloadCsv({ filename: 'export.csv', content: 'Name\r\nAlice' });
     expect(result).toBe(true);

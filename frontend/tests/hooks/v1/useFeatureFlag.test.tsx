@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { FeatureFlagsProvider, DEFAULT_FEATURE_FLAGS } from '@/services/feature-flags';
 import { useFeatureFlag } from '@/hooks/v1/useFeatureFlag';

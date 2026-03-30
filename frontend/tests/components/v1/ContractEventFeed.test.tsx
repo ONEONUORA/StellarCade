@@ -9,7 +9,6 @@ import {
   getSavedFilterPresets,
   recordRecentFilter,
   getRecentFilters,
-  clearRecentFilters,
 } from '@/services/global-state-store';
 
 const mockStart = vi.fn();

@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { TxPhase, TxStatusMeta, TxStatusError } from '../../types/tx-status';
 import { EnvironmentBadge } from './EnvironmentBadge';
-import { formatAddress, formatDate, formatTxTimestamp, truncateHash, formatCopyableValue } from '../../utils/v1/formatters';
+import { formatAddress, formatDate, formatTxTimestamp, truncateHash } from '../../utils/v1/formatters';
 import { useCopyFeedback } from '../../utils/v1/clipboard';
 import './TxStatusPanel.css';
 
