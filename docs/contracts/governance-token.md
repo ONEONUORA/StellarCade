@@ -205,8 +205,9 @@ pub struct Checkpoint {
 
 ## Checkpoint Ordering & Retention
 
+- A `Checkpoint { ledger, balance }` is written for the affected holder(s) on every `mint`, `burn`, and `transfer` operation.
 - Checkpoints are stored per holder in ascending ledger-sequence order (oldest → newest).
-- Multiple balance changes within the same ledger overwrite the single entry for that ledger.
-- A maximum of 50 checkpoints are retained per holder; the oldest is evicted when the cap is reached.
-- Unknown holders return `None` (latest) or an empty list (history) — never an ambiguous zero state.
+- Multiple balance changes within the same ledger overwrite the single entry for that ledger rather than creating duplicates.
+- A maximum of 50 checkpoints are retained per holder; the oldest entry is evicted when the cap is reached.
+- Unknown holders return `None` from `latest_checkpoint` and an empty list from `checkpoint_history` — never an ambiguous zero state.
 

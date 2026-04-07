@@ -282,7 +282,7 @@ impl GovernanceToken {
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
+    use soroban_sdk::testutils::{Address as _, Ledger, MockAuth, MockAuthInvoke};
     use soroban_sdk::IntoVal;
 
     fn setup() -> (Env, Address, soroban_sdk::Address, GovernanceTokenClient<'static>) {
@@ -422,5 +422,33 @@ mod test {
 
         let receiver_cp = client.latest_checkpoint(&receiver).unwrap();
         assert_eq!(receiver_cp.balance, 300);
+    }
+
+    #[test]
+    fn test_checkpoint_eviction_and_ordering() {
+        let (env, _admin, _cid, client) = setup();
+        let user = Address::generate(&env);
+
+        // Write MAX_CHECKPOINTS + 1 checkpoints across distinct ledgers.
+        for i in 0..=MAX_CHECKPOINTS {
+            env.ledger().with_mut(|li| li.sequence_number = i + 1);
+            client.mint(&user, &1);
+        }
+
+        // History should be capped at MAX_CHECKPOINTS.
+        let hist = client.checkpoint_history(&user, &MAX_CHECKPOINTS);
+        assert_eq!(hist.len(), MAX_CHECKPOINTS);
+
+        // Entries must be oldest-first (ascending ledger).
+        for i in 0..(hist.len() - 1) {
+            assert!(hist.get(i).unwrap().ledger < hist.get(i + 1).unwrap().ledger);
+        }
+
+        // The oldest checkpoint (ledger 1) must have been evicted.
+        assert!(hist.get(0).unwrap().ledger > 1);
+
+        // latest_checkpoint reflects the final cumulative balance.
+        let latest = client.latest_checkpoint(&user).unwrap();
+        assert_eq!(latest.balance, (MAX_CHECKPOINTS as i128) + 1);
     }
 }

@@ -4,8 +4,8 @@ This contract implements the governance token for the StellarCade platform. It p
 
 ## Methods
 
-### `init(admin: Address, token_config: TokenConfig)`
-Initializes the contract with an admin address and token configuration.
+### `init(admin: Address, name: String, symbol: String, decimals: u32)`
+Initializes the contract with an admin address and token configuration. Requires admin authorization.
 
 ### `mint(to: Address, amount: i128)`
 Mints new tokens to the specified address. Requires admin authorization.
@@ -19,7 +19,7 @@ Transfers tokens from one address to another. Requires authorization from the se
 ### `total_supply() -> i128`
 Returns the current total supply of tokens.
 
-### `balance_of(owner: Address) -> i128`
+### `balance(owner: Address) -> i128`
 Returns the token balance of the specified owner.
 
 ### `latest_checkpoint(holder: Address) -> Option<Checkpoint>`
