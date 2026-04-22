@@ -102,3 +102,42 @@ pub fn get_recent_games(env: Env, player: Address, start: u32, limit: u32) -> Re
 
 `Result<PlayerGameHistoryPage, Error>`
 
+### `house_exposure_snapshot`
+Return the current house exposure across all unresolved games.
+
+The snapshot is derived from aggregate counters maintained by `place_bet` and
+`resolve_bet`, so it requires no off-chain scanning and is safe for frequent
+backend polling.
+
+`max_payout_liability` is the worst-case token outflow if every active game
+resolves in the player's favour:
+
+```
+max_payout_liability = total_wagered × (2 × 10_000 − house_edge_bps) / 10_000
+```
+
+Liability resets to zero automatically as games are resolved; no admin action
+is required between rounds.
+
+```rust
+pub fn house_exposure_snapshot(env: Env) -> Result<HouseExposureSnapshot, Error>
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+
+#### Return Type
+
+`Result<HouseExposureSnapshot, Error>`
+
+#### `HouseExposureSnapshot` Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `active_game_count` | `u32` | Number of bets placed but not yet resolved |
+| `total_wagered` | `i128` | Sum of all wagers across unresolved games |
+| `max_payout_liability` | `i128` | Worst-case token payout if all active games are won |
+
