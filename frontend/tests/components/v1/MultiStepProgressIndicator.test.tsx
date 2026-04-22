@@ -206,7 +206,7 @@ describe('MultiStepProgressIndicator', () => {
       <MultiStepProgressIndicator steps={mockSteps} currentStepIndex={-1} />
     );
 
-    let step0 = screen.getByTestId('multi-step-progress-step-0');
+    const step0 = screen.getByTestId('multi-step-progress-step-0');
     expect(step0).toHaveAttribute('data-step-status', 'active');
 
     rerender(<MultiStepProgressIndicator steps={mockSteps} currentStepIndex={999} />);

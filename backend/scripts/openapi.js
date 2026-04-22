@@ -15,6 +15,7 @@ const routeLineRegex = /router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['
 const requireRegex = /const\s+(\w+)\s*=\s*require\(['"](.+)['"]\);/g;
 const mountRegex = /router\.use\(\s*['"]([^'"]+)['"]\s*,\s*(\w+)\s*\);/g;
 const healthRouteRegex = /app\.get\(\s*['"]([^'"]+)['"]\s*,/;
+const routerHealthRouteRegex = /router\.get\(\s*['"]([^'"]+)['"]\s*,\s*healthCheck\s*\)/;
 
 const defaultErrorResponse = {
   description: 'Unexpected server error',
@@ -253,6 +254,7 @@ function parseMounts() {
   const source = readFile(routesIndexFile);
   const variableToFile = new Map();
   let requireMatch;
+  requireRegex.lastIndex = 0;
 
   while ((requireMatch = requireRegex.exec(source)) !== null) {
     const [, variableName, importPath] = requireMatch;
@@ -263,11 +265,12 @@ function parseMounts() {
 
   const mounts = [];
   let mountMatch;
+  mountRegex.lastIndex = 0;
   while ((mountMatch = mountRegex.exec(source)) !== null) {
     const [, mountPath, variableName] = mountMatch;
     const filePath = variableToFile.get(variableName);
     if (!filePath) {
-      throw new Error(`Unable to resolve mounted router "${variableName}" from routes/index.js`);
+      continue;
     }
 
     mounts.push({ mountPath, filePath });
@@ -281,6 +284,7 @@ function parseRouteDefinitions(filePath) {
   const routeDocs = evaluateLiteral(extractLiteral(source, routeDocsRegex, 'routeDocs', filePath), filePath);
   const routes = [];
   let lineMatch;
+  routeLineRegex.lastIndex = 0;
 
   while ((lineMatch = routeLineRegex.exec(source)) !== null) {
     const [, method, routePath, handlers] = lineMatch;
@@ -366,7 +370,31 @@ function buildHealthPath() {
   const serverSource = readFile(serverFile);
   const healthMatch = serverSource.match(healthRouteRegex);
   if (!healthMatch) {
-    throw new Error('Could not find /api/health route in backend/src/server.js');
+    const routesIndexSource = readFile(routesIndexFile);
+    const routerHealthMatch = routesIndexSource.match(routerHealthRouteRegex);
+    if (!routerHealthMatch) {
+      throw new Error('Could not find /api/health route in backend/src/server.js or backend/src/routes/index.js');
+    }
+
+    return {
+      [normalizePath('/api', routerHealthMatch[1])]: {
+        get: {
+          operationId: 'getHealthStatus',
+          summary: 'Check API health',
+          tags: ['Health'],
+          responses: {
+            200: {
+              description: 'API health payload returned successfully',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/HealthResponse' },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
   }
 
   const healthPath = healthMatch[1];

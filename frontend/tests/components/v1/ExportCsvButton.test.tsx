@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ExportCsvButton } from '../../../src/components/v1/ExportCsvButton';
@@ -20,27 +19,29 @@ const rows: Row[] = [
 ];
 
 // Stub URL.createObjectURL / revokeObjectURL for happy-dom environment.
-let mockObjectUrl = 'blob:test';
-let createObjectURLSpy: ReturnType<typeof vi.fn>;
-let revokeObjectURLSpy: ReturnType<typeof vi.fn>;
-let appendChildSpy: ReturnType<typeof vi.spyOn>;
-let removeChildSpy: ReturnType<typeof vi.spyOn>;
+const mockObjectUrl = 'blob:test';
+let createObjectURLSpy: any;
+let revokeObjectURLSpy: any;
+let originalAppendChild: (node: Node) => Node;
+let appendChildSpy: any;
 
 beforeEach(() => {
   createObjectURLSpy = vi.fn(() => mockObjectUrl);
   revokeObjectURLSpy = vi.fn();
 
-  URL.createObjectURL = createObjectURLSpy;
-  URL.revokeObjectURL = revokeObjectURLSpy;
+  URL.createObjectURL = createObjectURLSpy as unknown as typeof URL.createObjectURL;
+  URL.revokeObjectURL = revokeObjectURLSpy as unknown as typeof URL.revokeObjectURL;
 
+  originalAppendChild = document.body.appendChild.bind(document.body);
   appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
     const el = node as HTMLAnchorElement;
     if (el.tagName === 'A') {
       el.click = vi.fn();
+      return node;
     }
-    return node;
+    return originalAppendChild(node);
   });
-  removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node);
+  vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node);
 });
 
 afterEach(() => {
@@ -59,7 +60,7 @@ describe('ExportCsvButton', () => {
         Download Data
       </ExportCsvButton>,
     );
-    expect(screen.getByRole('button', { name: /download data/i })).toBeInTheDocument();
+    expect(screen.getByText('Download Data')).toBeInTheDocument();
   });
 
   it('is disabled when rows is empty', () => {

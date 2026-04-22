@@ -2,6 +2,7 @@
 
 use super::*;
 use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::Ledger as _;
 use soroban_sdk::{Address, Env};
 
 fn setup(env: &Env) -> (EmergencyPauseClient<'_>, Address, Address) {

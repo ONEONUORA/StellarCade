@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { TxPhase, TxStatusMeta, TxStatusError } from '../../types/tx-status';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { formatAddress, formatDate, formatTxTimestamp, truncateHash } from '../../utils/v1/formatters';
 import { Timeline } from './Timeline';
 import type { TimelineItemData, TimelineItemStatus } from './Timeline';
+import { useCopyFeedback } from '../../utils/v1/clipboard';
 import './TxStatusPanel.css';
 
 /**
@@ -153,7 +154,7 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
   sender,
   recipient,
 }) => {
-  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const { state: copyState, copy: triggerCopy } = useCopyFeedback();
 
   const isFailed = phase === TxPhase.FAILED;
   const isPending = phase === TxPhase.PENDING || phase === TxPhase.SUBMITTED;
@@ -161,14 +162,8 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
 
   const handleCopy = useCallback(async () => {
     if (!meta?.hash) return;
-    try {
-      await navigator.clipboard.writeText(meta.hash);
-      setCopyState('copied');
-      setTimeout(() => setCopyState('idle'), 2000);
-    } catch {
-      console.error('Failed to copy transaction hash');
-    }
-  }, [meta?.hash]);
+    await triggerCopy(meta.hash);
+  }, [meta?.hash, triggerCopy]);
 
   const handleExplorerClick = useCallback(() => {
     if (!meta?.hash) return;
@@ -190,183 +185,180 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
     }
   }, [canPrint]);
 
-    const containerClasses = [
-        'tx-status-panel',
-        compact ? 'tx-status-panel--compact' : '',
-        className
-    ].join(' ');
+  const containerClasses = ['tx-status-panel', compact ? 'tx-status-panel--compact' : '', className].join(' ');
 
-    const currentStepIndex =
-      phase === TxPhase.IDLE ? 0 :
-      phase === TxPhase.SUBMITTED ? 1 :
-      phase === TxPhase.PENDING ? 2 :
-      phase === TxPhase.CONFIRMED ? 3 :
-      isFailed ? 2 : 0;
+  const currentStepIndex =
+    phase === TxPhase.IDLE ? 0 :
+    phase === TxPhase.SUBMITTED ? 1 :
+    phase === TxPhase.PENDING ? 2 :
+    phase === TxPhase.CONFIRMED ? 3 :
+    isFailed ? 2 : 0;
 
-    const resolveStepStatus = (stepIndex: number): TimelineItemStatus => {
-      if (isFailed && stepIndex === currentStepIndex) return 'error';
-      if (stepIndex < currentStepIndex && !isFailed) return 'completed';
-      if (
-        (phase === TxPhase.SUBMITTED && stepIndex === 1) ||
-        (phase === TxPhase.PENDING && stepIndex === 2)
-      ) return 'active';
-      return 'idle';
-    };
+  const resolveStepStatus = (stepIndex: number): TimelineItemStatus => {
+    if (isFailed && stepIndex === currentStepIndex) return 'error';
+    if (stepIndex < currentStepIndex && !isFailed) return 'completed';
+    if (
+      (phase === TxPhase.SUBMITTED && stepIndex === 1) ||
+      (phase === TxPhase.PENDING && stepIndex === 2)
+    ) return 'active';
+    return 'idle';
+  };
 
-    const txTimelineItems: TimelineItemData[] = [
-      {
-        id: 'submitted',
-        label: 'Submitted',
-        status: resolveStepStatus(1),
-        timestamp: meta?.submittedAt ? formatDate(meta.submittedAt, { timeStyle: 'short' }) : null,
-      },
-      {
-        id: 'pending',
-        label: 'Pending',
-        status: resolveStepStatus(2),
-      },
-      {
-        id: 'confirmed',
-        label: 'Confirmed',
-        status: resolveStepStatus(3),
-        timestamp: meta?.settledAt ? formatDate(meta.settledAt, { timeStyle: 'short' }) : null,
-      },
-    ];
+  const txTimelineItems: TimelineItemData[] = [
+    {
+      id: 'submitted',
+      label: 'Submitted',
+      status: resolveStepStatus(1),
+      timestamp: meta?.submittedAt ? formatDate(meta.submittedAt, { timeStyle: 'short' }) : null,
+    },
+    {
+      id: 'pending',
+      label: 'Pending',
+      status: resolveStepStatus(2),
+    },
+    {
+      id: 'confirmed',
+      label: 'Confirmed',
+      status: resolveStepStatus(3),
+      timestamp: meta?.settledAt ? formatDate(meta.settledAt, { timeStyle: 'short' }) : null,
+    },
+  ];
 
-    const badgeClass = `tx-status-panel__badge tx-status-panel__badge--${phase.toLowerCase()}`;
+  const badgeClass = `tx-status-panel__badge tx-status-panel__badge--${phase.toLowerCase()}`;
 
-    return (
-        <div className={containerClasses} data-testid={testId}>
-            <div className="tx-status-panel__header">
-                <span className="tx-status-panel__title" data-testid={`${testId}-title`}>
-                    {isIdle ? 'Ready to Submit' : 'Transaction Status'}
-                </span>
-                <div className="tx-status-panel__header-badges">
-                  <span className={badgeClass} data-testid={`${testId}-badge`}>{phase}</span>
-                  {network && (
-                    <EnvironmentBadge environment={network} size="small" testId={`${testId}-env-badge`} />
-                  )}
-                </div>
-            </div>
-
-            {!isIdle && (
-                <div className="tx-status-panel__timeline" data-testid={`${testId}-timeline`}>
-                  <Timeline
-                    items={txTimelineItems}
-                    orientation="horizontal"
-                    compact={compact}
-                    testId={`${testId}-steps`}
-                  />
-                </div>
-            )}
-
-            {isFailed && error && (
-                <div className="tx-status-panel__error" data-testid={`${testId}-error`}>
-                    <span className="tx-status-panel__error-title">Error: {error.code}</span>
-                    <p>{error.message}</p>
-                </div>
-            )}
-
-  {!compact && meta && (
-    <div className="tx-status-panel__meta" data-testid={`${testId}-meta`}>
-      <div className="tx-status-panel__meta-row">
-        <span className="tx-status-panel__meta-label">Transaction Hash</span>
-        <div className="tx-status-panel__hash-row">
-          <span className="tx-status-panel__hash" title={meta.hash}>
-            {formatAddress(meta.hash, { startChars: 8, endChars: 8 })}
-          </span>
-          {showCopyButton && (
-            <button
-              type="button"
-              className={`tx-status-panel__copy-btn${copyState === 'copied' ? ' tx-status-panel__copy-btn--copied' : ''}`}
-              onClick={handleCopy}
-              aria-label={copyState === 'copied' ? 'Copied!' : 'Copy transaction hash'}
-              data-testid={`${testId}-copy-btn`}
-            >
-              {copyState === 'copied' ? '✓' : '📋'}
-            </button>
+  return (
+    <div className={containerClasses} data-testid={testId}>
+      <div className="tx-status-panel__header">
+        <span className="tx-status-panel__title" data-testid={`${testId}-title`}>
+          {isIdle ? 'Ready to Submit' : 'Transaction Status'}
+        </span>
+        <div className="tx-status-panel__header-badges">
+          <span className={badgeClass} data-testid={`${testId}-badge`}>{phase}</span>
+          {network && (
+            <EnvironmentBadge environment={network} size="small" testId={`${testId}-env-badge`} />
           )}
         </div>
       </div>
 
-      <div className="tx-status-panel__meta-row">
-        <span className="tx-status-panel__meta-label">Submitted</span>
-        <span>{formatDate(meta.submittedAt, { timeStyle: 'short' })}</span>
-      </div>
-
-      {meta.settledAt && (
-        <div className="tx-status-panel__meta-row">
-          <span className="tx-status-panel__meta-label">Settled</span>
-          <span>{formatDate(meta.settledAt, { timeStyle: 'short' })}</span>
+      {!isIdle && (
+        <div className="tx-status-panel__timeline" data-testid={`${testId}-timeline`}>
+          <Timeline
+            items={txTimelineItems}
+            orientation="horizontal"
+            compact={compact}
+            testId={`${testId}-steps`}
+          />
         </div>
       )}
 
-      {meta.confirmations > 0 && !isFailed && (
-        <div className="tx-status-panel__meta-row">
-          <span className="tx-status-panel__meta-label">Confirmations</span>
-          <span data-testid={`${testId}-confirmations`}>{meta.confirmations}</span>
+      {isFailed && error && (
+        <div className="tx-status-panel__error" data-testid={`${testId}-error`}>
+          <span className="tx-status-panel__error-title">Error: {error.code}</span>
+          <p>{error.message}</p>
         </div>
       )}
 
-      {meta.retryCount != null && meta.retryCount > 0 && (
-        <div className="tx-status-panel__meta-row" data-testid={`${testId}-retry-count`}>
-          <span className="tx-status-panel__meta-label">Retries</span>
-          <span>{meta.retryCount}</span>
+      {!compact && meta && (
+        <div className="tx-status-panel__meta" data-testid={`${testId}-meta`}>
+          <div className="tx-status-panel__meta-row">
+            <span className="tx-status-panel__meta-label">Transaction Hash</span>
+            <div className="tx-status-panel__hash-row">
+              <span className="tx-status-panel__hash" title={meta.hash}>
+                {formatAddress(meta.hash, { startChars: 8, endChars: 8 })}
+              </span>
+              {showCopyButton && (
+                <button
+                  type="button"
+                  className={`tx-status-panel__copy-btn${copyState === 'success' ? ' tx-status-panel__copy-btn--copied' : ''}${copyState === 'error' ? ' tx-status-panel__copy-btn--error' : ''}`}
+                  onClick={handleCopy}
+                  aria-label={copyState === 'success' ? 'Copied!' : copyState === 'error' ? 'Copy failed' : 'Copy transaction hash'}
+                  aria-live="polite"
+                  data-testid={`${testId}-copy-btn`}
+                >
+                  {copyState === 'success' ? '✓' : copyState === 'error' ? '✗' : '📋'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="tx-status-panel__meta-row">
+            <span className="tx-status-panel__meta-label">Submitted</span>
+            <span>{formatDate(meta.submittedAt, { timeStyle: 'short' })}</span>
+          </div>
+
+          {meta.settledAt && (
+            <div className="tx-status-panel__meta-row">
+              <span className="tx-status-panel__meta-label">Settled</span>
+              <span>{formatDate(meta.settledAt, { timeStyle: 'short' })}</span>
+            </div>
+          )}
+
+          {meta.confirmations > 0 && !isFailed && (
+            <div className="tx-status-panel__meta-row">
+              <span className="tx-status-panel__meta-label">Confirmations</span>
+              <span data-testid={`${testId}-confirmations`}>{meta.confirmations}</span>
+            </div>
+          )}
+
+          {meta.retryCount != null && meta.retryCount > 0 && (
+            <div className="tx-status-panel__meta-row" data-testid={`${testId}-retry-count`}>
+              <span className="tx-status-panel__meta-label">Retries</span>
+              <span>{meta.retryCount}</span>
+            </div>
+          )}
+
+          {meta.lastAttemptAt != null && (
+            <div className="tx-status-panel__meta-row" data-testid={`${testId}-last-attempt`}>
+              <span className="tx-status-panel__meta-label">Last Attempt</span>
+              <span>{formatDate(meta.lastAttemptAt, { timeStyle: 'short' })}</span>
+            </div>
+          )}
+
+          {(onExplorerLink || explorerUrl) && (
+            <button
+              type="button"
+              className="tx-status-panel__explorer-link"
+              onClick={handleExplorerClick}
+              data-testid={`${testId}-explorer-btn`}
+            >
+              View in Explorer &rarr;
+            </button>
+          )}
+
+          {canPrint && !compact && (
+            <button
+              type="button"
+              className="tx-status-panel__print-btn"
+              onClick={handlePrint}
+              aria-label="Print transaction receipt"
+              data-testid={`${testId}-print-btn`}
+            >
+              Print Receipt
+            </button>
+          )}
         </div>
       )}
 
-      {meta.lastAttemptAt != null && (
-        <div className="tx-status-panel__meta-row" data-testid={`${testId}-last-attempt`}>
-          <span className="tx-status-panel__meta-label">Last Attempt</span>
-          <span>{formatDate(meta.lastAttemptAt, { timeStyle: 'short' })}</span>
+      {isIdle && !compact && (
+        <div className="tx-status-panel__empty-state">
+          Submit a transaction to track its progress in real-time.
         </div>
       )}
 
-      {(onExplorerLink || explorerUrl) && (
-        <button
-          type="button"
-          className="tx-status-panel__explorer-link"
-          onClick={handleExplorerClick}
-      data-testid={`${testId}-explorer-btn`}
-        >
-          View in Explorer &rarr;
-        </button>
-      )}
-
-      {canPrint && !compact && (
-        <button
-          type="button"
-          className="tx-status-panel__print-btn"
-          onClick={handlePrint}
-          aria-label="Print transaction receipt"
-          data-testid={`${testId}-print-btn`}
-        >
-          Print Receipt
-        </button>
+      {meta && !isIdle && (
+        <TxReceiptView
+          meta={meta}
+          phase={phase}
+          network={network}
+          asset={asset}
+          amount={amount}
+          sender={sender}
+          recipient={recipient}
+          testId={`${testId}-receipt`}
+        />
       )}
     </div>
-  )}
-
-  {isIdle && !compact && (
-    <div className="tx-status-panel__empty-state">
-      Submit a transaction to track its progress in real-time.
-    </div>
-  )}
-
-  {meta && !isIdle && (
-    <TxReceiptView
-      meta={meta}
-      phase={phase}
-      network={network}
-      asset={asset}
-      amount={amount}
-      sender={sender}
-      recipient={recipient}
-      testId={`${testId}-receipt`}
-    />
-  )}
-</div>
-);
+  );
 };
 
 TxStatusPanel.displayName = 'TxStatusPanel';
