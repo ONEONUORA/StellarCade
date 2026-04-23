@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
 import { FilterPresetBar } from '@/components/v1/FilterPresetBar';
 
 describe('FilterPresetBar', () => {
@@ -9,8 +9,8 @@ describe('FilterPresetBar', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it('shows empty state when no presets exist', () => {
@@ -69,7 +69,9 @@ describe('FilterPresetBar', () => {
     fireEvent.change(input, { target: { value: 'Active Filter' } });
     fireEvent.click(screen.getByTestId('filter-preset-bar-save-btn'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Active Filter' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Active Filter' }),
+    );
 
     expect(onApply).toHaveBeenCalledOnce();
     const calledWith = onApply.mock.calls[0][0];
@@ -97,6 +99,19 @@ describe('FilterPresetBar', () => {
 
     expect(scoped.queryByText('To Delete')).toBeNull();
     expect(within(root).getByTestId('filter-preset-bar-empty')).toBeTruthy();
+    const row = screen.getByText('To Delete').closest('li');
+    expect(row).toBeTruthy();
+    const deleteBtn = within(row as HTMLElement).getByRole('button', {
+      name: /delete preset/i,
+    });
+    fireEvent.click(deleteBtn);
+
+    expect(screen.queryByText('To Delete')).toBeNull();
+    // If that was the last preset, we should fall back to the empty state.
+    // Otherwise, the list remains visible with remaining presets.
+    const empty = screen.queryByTestId('filter-preset-bar-empty');
+    const list = screen.queryByTestId('filter-preset-bar-list');
+    expect(Boolean(empty) || Boolean(list)).toBe(true);
   });
 
   it('Enter key saves the preset', () => {

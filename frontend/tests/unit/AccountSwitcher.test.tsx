@@ -8,7 +8,9 @@ import type { RecentAccount } from '@/components/v1/AccountSwitcher.types';
 
 // ── Mock account-memory-service ──────────────────────────────────────────────
 
-const mockGetRecentAccounts = vi.fn(() => [] as RecentAccount[]);
+import type { RecentAccount } from '@/components/v1/AccountSwitcher.types';
+
+const mockGetRecentAccounts = vi.fn((): RecentAccount[] => []);
 const mockRecordAccountUsage = vi.fn();
 const mockRemoveAccount = vi.fn();
 
@@ -20,9 +22,7 @@ vi.mock('@/services/account-memory-service', () => ({
 }));
 
 // Import component after mocks are in place
-const { AccountSwitcher } = await import(
-  '@/components/v1/AccountSwitcher'
-);
+import { AccountSwitcher } from '@/components/v1/AccountSwitcher';
 
 const ADDR_A = 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOKY3B2WSQHG4W37';
 const ADDR_B = 'GCZ6Q4P4JSGZJGJBBXJ3UVBSKJB3HNVVUOHB2JGLQKRGXPGMV7OMEFP';
