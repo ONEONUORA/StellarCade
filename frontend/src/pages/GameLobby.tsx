@@ -1,32 +1,38 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiClient } from '../services/typed-api-sdk';
-import { Game } from '../types/api-client';
-import StatusCard from '../components/v1/StatusCard';
-import NetworkGuardBanner from '../components/v1/NetworkGuardBanner';
-import WalletStatusCard from '../components/v1/WalletStatusCard';
-import PrizePoolStateCard from '../components/v1/PrizePoolStateCard';
-import { DataTable, type DataTableColumn } from '../components/v1/DataTable';
-import { SkeletonPreset } from '../components/v1/LoadingSkeletonSet';
-import TransactionDetailDrawer from '../components/v1/TransactionDetailDrawer';
-import { isSupportedNetwork } from '../utils/v1/useNetworkGuard';
-import { useWalletStatus } from '../hooks/v1/useWalletStatus';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { ApiClient } from "../services/typed-api-sdk";
+import { Game } from "../types/api-client";
+import StatusCard from "../components/v1/StatusCard";
+import NetworkGuardBanner from "../components/v1/NetworkGuardBanner";
+import WalletStatusCard from "../components/v1/WalletStatusCard";
+import PrizePoolStateCard from "../components/v1/PrizePoolStateCard";
+import { DataTable, type DataTableColumn } from "../components/v1/DataTable";
+import { SkeletonPreset } from "../components/v1/LoadingSkeletonSet";
+import TransactionDetailDrawer from "../components/v1/TransactionDetailDrawer";
+import { isSupportedNetwork } from "../utils/v1/useNetworkGuard";
+import { useWalletStatus } from "../hooks/v1/useWalletStatus";
 import GlobalStateStore, {
   ONBOARDING_CHECKLIST_DISMISSED_FLAG,
   getTableDensityPreference,
   persistTableDensityPreference,
   type TableDensityPreference,
-} from '../services/global-state-store';
-import type { PendingTransactionSnapshot } from '../types/global-state';
+} from "../services/global-state-store";
+import type { PendingTransactionSnapshot } from "../types/global-state";
 
 // ─── Onboarding Checklist ────────────────────────────────────────────────────
 
 const CHECKLIST_ITEMS = [
-  { id: 'connect-wallet', label: 'Connect your Stellar wallet' },
-  { id: 'browse-games', label: 'Browse available games' },
-  { id: 'place-wager', label: 'Place your first wager' },
+  { id: "connect-wallet", label: "Connect your Stellar wallet" },
+  { id: "browse-games", label: "Browse available games" },
+  { id: "place-wager", label: "Place your first wager" },
 ] as const;
 
-const DASHBOARD_DENSITY_SCOPE = 'dashboard-surfaces';
+const DASHBOARD_DENSITY_SCOPE = "dashboard-surfaces";
 
 interface LeaderboardRow {
   rank: number;
@@ -40,7 +46,9 @@ interface FirstTimeChecklistProps {
   onDismiss: () => void;
 }
 
-const FirstTimeChecklist: React.FC<FirstTimeChecklistProps> = ({ onDismiss }) => {
+const FirstTimeChecklist: React.FC<FirstTimeChecklistProps> = ({
+  onDismiss,
+}) => {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
   const toggle = useCallback((id: string) => {
@@ -76,7 +84,11 @@ const FirstTimeChecklist: React.FC<FirstTimeChecklistProps> = ({ onDismiss }) =>
                 onChange={() => toggle(item.id)}
                 data-testid={`checklist-item-${item.id}`}
               />
-              <span className={checked[item.id] ? 'onboarding-checklist__text--done' : ''}>
+              <span
+                className={
+                  checked[item.id] ? "onboarding-checklist__text--done" : ""
+                }
+              >
                 {item.label}
               </span>
             </label>
@@ -89,7 +101,7 @@ const FirstTimeChecklist: React.FC<FirstTimeChecklistProps> = ({ onDismiss }) =>
 
 function formatCompactAddress(address: string | null): string {
   if (!address) {
-    return 'No wallet connected';
+    return "No wallet connected";
   }
   if (address.length <= 12) {
     return address;
@@ -97,11 +109,13 @@ function formatCompactAddress(address: string | null): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function formatPendingTxLabel(pendingTransaction: PendingTransactionSnapshot | null): string {
+function formatPendingTxLabel(
+  pendingTransaction: PendingTransactionSnapshot | null,
+): string {
   if (!pendingTransaction) {
-    return 'No pending tx';
+    return "No pending tx";
   }
-  return pendingTransaction.phase.replace(/_/g, ' ');
+  return pendingTransaction.phase.replace(/_/g, " ");
 }
 
 export const GameLobby: React.FC = () => {
@@ -109,7 +123,8 @@ export const GameLobby: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [networkCheckPending, setNetworkCheckPending] = useState(false);
-  const [pendingTransaction, setPendingTransaction] = useState<PendingTransactionSnapshot | null>(null);
+  const [pendingTransaction, setPendingTransaction] =
+    useState<PendingTransactionSnapshot | null>(null);
   const [isTransactionDrawerOpen, setIsTransactionDrawerOpen] = useState(false);
   const [tableDensity, setTableDensity] = useState<TableDensityPreference>(() =>
     getTableDensityPreference(DASHBOARD_DENSITY_SCOPE),
@@ -122,29 +137,72 @@ export const GameLobby: React.FC = () => {
   }
 
   const [checklistDismissed, setChecklistDismissed] = useState<boolean>(
-    () => !!globalStoreRef.current?.selectFlag(ONBOARDING_CHECKLIST_DISMISSED_FLAG),
+    () =>
+      !!globalStoreRef.current?.selectFlag(ONBOARDING_CHECKLIST_DISMISSED_FLAG),
   );
 
   const handleDismissChecklist = useCallback(() => {
     globalStoreRef.current?.dispatch({
-      type: 'FLAGS_SET',
+      type: "FLAGS_SET",
       payload: { key: ONBOARDING_CHECKLIST_DISMISSED_FLAG, value: true },
     });
     setChecklistDismissed(true);
   }, []);
 
   const networkSupport = useMemo(
-    () => isSupportedNetwork(wallet.network, { supportedNetworks: ['TESTNET', 'PUBLIC'] }),
+    () =>
+      isSupportedNetwork(wallet.network, {
+        supportedNetworks: ["TESTNET", "PUBLIC"],
+      }),
     [wallet.network],
   );
 
-  const networkMismatch = wallet.capabilities.isConnected && !networkSupport.isSupported;
+  const networkMismatch =
+    wallet.capabilities.isConnected && !networkSupport.isSupported;
+  const walletDiagnostics = useMemo(
+    () => [
+      {
+        label: "Provider",
+        value: wallet.provider?.name ?? "Unavailable",
+        tone: wallet.provider ? ("success" as const) : ("warning" as const),
+      },
+      {
+        label: "Network supported",
+        value: networkSupport.isSupported,
+        tone: networkSupport.isSupported
+          ? ("success" as const)
+          : ("error" as const),
+      },
+      {
+        label: "Normalized network",
+        value: networkSupport.normalizedActual ?? "Unknown",
+      },
+      {
+        label: "Recovery pending",
+        value: networkCheckPending,
+        tone: networkCheckPending ? ("warning" as const) : ("neutral" as const),
+      },
+      {
+        label: "Last wallet sync",
+        value: wallet.lastUpdatedAt
+          ? new Date(wallet.lastUpdatedAt).toLocaleTimeString()
+          : "Not synced",
+      },
+    ],
+    [
+      networkCheckPending,
+      networkSupport.isSupported,
+      networkSupport.normalizedActual,
+      wallet.lastUpdatedAt,
+      wallet.provider,
+    ],
+  );
 
   useEffect(() => {
     const fetchGames = async () => {
       const client = new ApiClient();
       const result = await client.getGames();
-      
+
       if (result.success) {
         setGames(result.data);
       } else {
@@ -179,7 +237,8 @@ export const GameLobby: React.FC = () => {
   }, [retryNetworkCheck]);
 
   const activeGames = useMemo(
-    () => games.filter((game) => String(game.status).toLowerCase() === 'active'),
+    () =>
+      games.filter((game) => String(game.status).toLowerCase() === "active"),
     [games],
   );
 
@@ -187,30 +246,39 @@ export const GameLobby: React.FC = () => {
     () =>
       [...activeGames]
         .sort((left, right) => {
-          const leftWager = typeof left.wager === 'number' ? left.wager : Number(left.wager ?? 0);
-          const rightWager = typeof right.wager === 'number' ? right.wager : Number(right.wager ?? 0);
+          const leftWager =
+            typeof left.wager === "number"
+              ? left.wager
+              : Number(left.wager ?? 0);
+          const rightWager =
+            typeof right.wager === "number"
+              ? right.wager
+              : Number(right.wager ?? 0);
           return rightWager - leftWager;
         })
         .map((game, index) => ({
           rank: index + 1,
           id: game.id,
           name: game.name,
-          status: String(game.status ?? 'unknown'),
-          wager: typeof game.wager === 'number' ? game.wager : Number(game.wager ?? 0),
+          status: String(game.status ?? "unknown"),
+          wager:
+            typeof game.wager === "number"
+              ? game.wager
+              : Number(game.wager ?? 0),
         })),
     [activeGames],
   );
 
   const leaderboardColumns = useMemo<DataTableColumn<LeaderboardRow>[]>(
     () => [
-      { key: 'rank', header: 'Rank', sortable: true, width: '5rem' },
-      { key: 'name', header: 'Game', sortable: true },
-      { key: 'status', header: 'Status', sortable: true, width: '8rem' },
+      { key: "rank", header: "Rank", sortable: true, width: "5rem" },
+      { key: "name", header: "Game", sortable: true },
+      { key: "status", header: "Status", sortable: true, width: "8rem" },
       {
-        key: 'wager',
-        header: 'Wager',
+        key: "wager",
+        header: "Wager",
         sortable: true,
-        width: '8rem',
+        width: "8rem",
         render: (row) => `${row.wager.toFixed(0)} XLM`,
         sortAccessor: (row) => row.wager,
       },
@@ -221,7 +289,8 @@ export const GameLobby: React.FC = () => {
   const totalPrizeSignal = useMemo(
     () =>
       activeGames.reduce((sum, game) => {
-        const wager = typeof game.wager === 'number' ? game.wager : Number(game.wager ?? 0);
+        const wager =
+          typeof game.wager === "number" ? game.wager : Number(game.wager ?? 0);
         return Number.isFinite(wager) ? sum + wager : sum;
       }, 0),
     [activeGames],
@@ -233,7 +302,7 @@ export const GameLobby: React.FC = () => {
         ? {
             balance: totalPrizeSignal.toFixed(2),
             totalReserved: String(activeGames.length),
-            admin: '',
+            admin: "",
           }
         : null,
     [activeGames.length, totalPrizeSignal],
@@ -252,11 +321,19 @@ export const GameLobby: React.FC = () => {
       </div>
     );
   }
-  if (error) return <div className="lobby-error" role="status" aria-live="polite">Failed to load games: {error}</div>;
+  if (error)
+    return (
+      <div className="lobby-error" role="status" aria-live="polite">
+        Failed to load games: {error}
+      </div>
+    );
 
   return (
     <div className="game-lobby">
-      <section aria-label="Wallet and network status" className="lobby-dashboard">
+      <section
+        aria-label="Wallet and network status"
+        className="lobby-dashboard"
+      >
         <div className="lobby-dashboard__col">
           <NetworkGuardBanner
             network={wallet.network}
@@ -287,6 +364,7 @@ export const GameLobby: React.FC = () => {
             networkRecoveryLabel="Recover Network"
             lastUpdatedAt={wallet.lastUpdatedAt}
             isRefreshing={wallet.isRefreshing}
+            diagnostics={walletDiagnostics}
           />
         </div>
 
@@ -300,18 +378,20 @@ export const GameLobby: React.FC = () => {
               id="wallet-kpi"
               name="Wallet"
               status={wallet.status}
-              tone={wallet.capabilities.isConnected ? 'success' : 'neutral'}
+              tone={wallet.capabilities.isConnected ? "success" : "neutral"}
               hideDefaultAction={true}
               bodySlot={
                 <div className="status-card__metric-group">
-                  <div className="status-card__metric-value">{wallet.capabilities.isConnected ? 'Connected' : 'Offline'}</div>
+                  <div className="status-card__metric-value">
+                    {wallet.capabilities.isConnected ? "Connected" : "Offline"}
+                  </div>
                   <div className="status-card__metric-note">
                     {formatCompactAddress(wallet.address)}
                   </div>
                   <div className="status-card__metric-caption">
                     {wallet.lastUpdatedAt
                       ? `Updated ${new Date(wallet.lastUpdatedAt).toLocaleTimeString()}`
-                      : 'No recent wallet sync'}
+                      : "No recent wallet sync"}
                   </div>
                 </div>
               }
@@ -319,8 +399,8 @@ export const GameLobby: React.FC = () => {
             <StatusCard
               id="tx-kpi"
               name="Transactions"
-              status={pendingTransaction ? pendingTransaction.phase : 'idle'}
-              tone={pendingTransaction ? 'warning' : 'neutral'}
+              status={pendingTransaction ? pendingTransaction.phase : "idle"}
+              tone={pendingTransaction ? "warning" : "neutral"}
               hideDefaultAction={true}
               footerSlot={
                 <button
@@ -330,26 +410,28 @@ export const GameLobby: React.FC = () => {
                   disabled={!pendingTransaction}
                   aria-label={
                     pendingTransaction
-                      ? 'Open transaction details'
-                      : 'Transaction details unavailable'
+                      ? "Open transaction details"
+                      : "Transaction details unavailable"
                   }
                   data-testid="transaction-detail-trigger"
                 >
-                  {pendingTransaction ? 'Inspect tx' : 'Awaiting tx'}
+                  {pendingTransaction ? "Inspect tx" : "Awaiting tx"}
                 </button>
               }
               bodySlot={
                 <div className="status-card__metric-group">
-                  <div className="status-card__metric-value">{formatPendingTxLabel(pendingTransaction)}</div>
+                  <div className="status-card__metric-value">
+                    {formatPendingTxLabel(pendingTransaction)}
+                  </div>
                   <div className="status-card__metric-note">
                     {pendingTransaction?.txHash
                       ? `${pendingTransaction.txHash.slice(0, 10)}...`
-                      : 'No recent transaction hash'}
+                      : "No recent transaction hash"}
                   </div>
                   <div className="status-card__metric-caption">
                     {pendingTransaction
                       ? `Started ${new Date(pendingTransaction.startedAt).toLocaleTimeString()}`
-                      : 'Waiting for the next wallet action'}
+                      : "Waiting for the next wallet action"}
                   </div>
                 </div>
               }
@@ -357,8 +439,16 @@ export const GameLobby: React.FC = () => {
             <PrizePoolStateCard
               compact={true}
               state={prizePoolState}
-              statusLabel={prizePoolState ? 'Prize pool signal live' : 'Awaiting prize-pool data'}
-              footerMeta={activeGames.length > 0 ? `${activeGames.length} live game${activeGames.length === 1 ? '' : 's'}` : null}
+              statusLabel={
+                prizePoolState
+                  ? "Prize pool signal live"
+                  : "Awaiting prize-pool data"
+              }
+              footerMeta={
+                activeGames.length > 0
+                  ? `${activeGames.length} live game${activeGames.length === 1 ? "" : "s"}`
+                  : null
+              }
               emptyMessage="No prize-pool metrics available yet."
               testId="lobby-prize-pool-kpi"
             />
@@ -391,27 +481,37 @@ export const GameLobby: React.FC = () => {
         )}
       </section>
 
-      <section aria-labelledby="leaderboard-heading" className="leaderboard-section">
+      <section
+        aria-labelledby="leaderboard-heading"
+        className="leaderboard-section"
+      >
         <div className="dashboard-section-heading">
           <div>
             <h2 id="leaderboard-heading">Active Games Leaderboard</h2>
-            <p>Switch between standard and compact density to scan live tables faster.</p>
+            <p>
+              Switch between standard and compact density to scan live tables
+              faster.
+            </p>
           </div>
-          <div className="density-toggle" role="group" aria-label="Table density">
+          <div
+            className="density-toggle"
+            role="group"
+            aria-label="Table density"
+          >
             <button
               type="button"
-              className={`density-toggle__button ${tableDensity === 'standard' ? 'is-active' : ''}`.trim()}
-              onClick={() => handleDensityChange('standard')}
-              aria-pressed={tableDensity === 'standard'}
+              className={`density-toggle__button ${tableDensity === "standard" ? "is-active" : ""}`.trim()}
+              onClick={() => handleDensityChange("standard")}
+              aria-pressed={tableDensity === "standard"}
               data-testid="leaderboard-density-standard"
             >
               Standard
             </button>
             <button
               type="button"
-              className={`density-toggle__button ${tableDensity === 'compact' ? 'is-active' : ''}`.trim()}
-              onClick={() => handleDensityChange('compact')}
-              aria-pressed={tableDensity === 'compact'}
+              className={`density-toggle__button ${tableDensity === "compact" ? "is-active" : ""}`.trim()}
+              onClick={() => handleDensityChange("compact")}
+              aria-pressed={tableDensity === "compact"}
               data-testid="leaderboard-density-compact"
             >
               Compact

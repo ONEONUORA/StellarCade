@@ -1,12 +1,17 @@
-import React, { useCallback } from 'react';
-import { TxPhase, TxStatusMeta, TxStatusError } from '../../types/tx-status';
-import { EnvironmentBadge } from './EnvironmentBadge';
-import { StatusPill } from './StatusPill';
-import { formatAddress, formatDate, formatTxTimestamp, truncateHash } from '../../utils/v1/formatters';
-import { Timeline } from './Timeline';
-import type { TimelineItemData, TimelineItemStatus } from './Timeline';
-import { useCopyFeedback } from '../../utils/v1/clipboard';
-import './TxStatusPanel.css';
+import React, { useCallback } from "react";
+import { TxPhase, TxStatusMeta, TxStatusError } from "../../types/tx-status";
+import { EnvironmentBadge } from "./EnvironmentBadge";
+import { StatusPill } from "./StatusPill";
+import {
+  formatAddress,
+  formatDate,
+  formatTxTimestamp,
+  truncateHash,
+} from "../../utils/v1/formatters";
+import { Timeline } from "./Timeline";
+import type { TimelineItemData, TimelineItemStatus } from "./Timeline";
+import { useCopyFeedback } from "../../utils/v1/clipboard";
+import "./TxStatusPanel.css";
 
 /**
  * TxReceiptView Component
@@ -33,7 +38,7 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
   amount,
   sender,
   recipient,
-  testId = 'tx-receipt',
+  testId = "tx-receipt",
 }) => {
   return (
     <div className="tx-status-panel__receipt" data-testid={testId}>
@@ -41,14 +46,20 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
 
       <div className="tx-status-panel__receipt-row">
         <span className="tx-status-panel__receipt-label">Transaction Hash</span>
-        <span className="tx-status-panel__receipt-value tx-status-panel__receipt-value--hash" data-testid={`${testId}-hash`}>
+        <span
+          className="tx-status-panel__receipt-value tx-status-panel__receipt-value--hash"
+          data-testid={`${testId}-hash`}
+        >
           {truncateHash(meta.hash)}
         </span>
       </div>
 
       <div className="tx-status-panel__receipt-row">
         <span className="tx-status-panel__receipt-label">Status</span>
-        <span className="tx-status-panel__receipt-value" data-testid={`${testId}-status`}>
+        <span
+          className="tx-status-panel__receipt-value"
+          data-testid={`${testId}-status`}
+        >
           {phase}
         </span>
       </div>
@@ -56,9 +67,14 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
       {amount !== undefined && (
         <div className="tx-status-panel__receipt-row">
           <span className="tx-status-panel__receipt-label">Amount</span>
-          <span className="tx-status-panel__receipt-value" data-testid={`${testId}-amount`}>
-            {typeof amount === 'bigint' || typeof amount === 'number' ? amount.toString() : amount}
-            {asset ? ` ${asset}` : ''}
+          <span
+            className="tx-status-panel__receipt-value"
+            data-testid={`${testId}-amount`}
+          >
+            {typeof amount === "bigint" || typeof amount === "number"
+              ? amount.toString()
+              : amount}
+            {asset ? ` ${asset}` : ""}
           </span>
         </div>
       )}
@@ -66,7 +82,10 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
       {sender && (
         <div className="tx-status-panel__receipt-row">
           <span className="tx-status-panel__receipt-label">Sender</span>
-          <span className="tx-status-panel__receipt-value" data-testid={`${testId}-sender`}>
+          <span
+            className="tx-status-panel__receipt-value"
+            data-testid={`${testId}-sender`}
+          >
             {truncateHash(sender)}
           </span>
         </div>
@@ -75,7 +94,10 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
       {recipient && (
         <div className="tx-status-panel__receipt-row">
           <span className="tx-status-panel__receipt-label">Recipient</span>
-          <span className="tx-status-panel__receipt-value" data-testid={`${testId}-recipient`}>
+          <span
+            className="tx-status-panel__receipt-value"
+            data-testid={`${testId}-recipient`}
+          >
             {truncateHash(recipient)}
           </span>
         </div>
@@ -83,7 +105,10 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
 
       <div className="tx-status-panel__receipt-row">
         <span className="tx-status-panel__receipt-label">Timestamp</span>
-        <span className="tx-status-panel__receipt-value" data-testid={`${testId}-timestamp`}>
+        <span
+          className="tx-status-panel__receipt-value"
+          data-testid={`${testId}-timestamp`}
+        >
           {formatTxTimestamp(meta.submittedAt)}
         </span>
       </div>
@@ -91,7 +116,10 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
       {network && (
         <div className="tx-status-panel__receipt-row">
           <span className="tx-status-panel__receipt-label">Network</span>
-          <span className="tx-status-panel__receipt-value" data-testid={`${testId}-network`}>
+          <span
+            className="tx-status-panel__receipt-value"
+            data-testid={`${testId}-network`}
+          >
             {network}
           </span>
         </div>
@@ -100,7 +128,41 @@ const TxReceiptView: React.FC<TxReceiptViewProps> = ({
   );
 };
 
-TxReceiptView.displayName = 'TxReceiptView';
+TxReceiptView.displayName = "TxReceiptView";
+
+function getTransactionAnnouncement(
+  phase: TxPhase,
+  meta?: TxStatusMeta | null,
+  error?: TxStatusError | null,
+): string {
+  if (phase === TxPhase.IDLE) {
+    return "Transaction form is ready.";
+  }
+
+  if (phase === TxPhase.SUBMITTED) {
+    return meta?.hash
+      ? `Transaction submitted. Hash ${truncateHash(meta.hash)}.`
+      : "Transaction submitted.";
+  }
+
+  if (phase === TxPhase.PENDING) {
+    return "Transaction is pending confirmation.";
+  }
+
+  if (phase === TxPhase.CONFIRMED) {
+    return meta?.confirmations
+      ? `Transaction confirmed with ${meta.confirmations} confirmations.`
+      : "Transaction confirmed.";
+  }
+
+  if (phase === TxPhase.FAILED) {
+    return error?.message
+      ? `Transaction failed. ${error.message}`
+      : "Transaction failed.";
+  }
+
+  return `Transaction status changed to ${phase}.`;
+}
 
 export interface TxStatusPanelProps {
   /** Current lifecycle phase of the transaction */
@@ -131,6 +193,8 @@ export interface TxStatusPanelProps {
   sender?: string;
   /** Recipient address for receipt display */
   recipient?: string;
+  /** Whether to render an aria-live transaction status announcement */
+  announceStatus?: boolean;
 }
 
 /**
@@ -147,13 +211,14 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
   onExplorerLink,
   explorerUrl,
   showCopyButton = true,
-  className = '',
-  testId = 'tx-status-panel',
+  className = "",
+  testId = "tx-status-panel",
   network,
   asset,
   amount,
   sender,
   recipient,
+  announceStatus = true,
 }) => {
   const { state: copyState, copy: triggerCopy } = useCopyFeedback();
 
@@ -169,7 +234,7 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
     if (!meta?.hash) return;
     if (explorerUrl) {
       const url = explorerUrl(meta.hash);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, "_blank", "noopener,noreferrer");
     }
     onExplorerLink?.(meta.hash);
   }, [meta?.hash, explorerUrl, onExplorerLink]);
@@ -178,64 +243,97 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
 
   const handlePrint = useCallback(() => {
     if (!canPrint) return;
-    if (typeof window !== 'undefined' && window.print) {
+    if (typeof window !== "undefined" && window.print) {
       window.print();
     } else {
-      console.warn('Print functionality is not available in this environment');
+      console.warn("Print functionality is not available in this environment");
     }
   }, [canPrint]);
 
-  const containerClasses = ['tx-status-panel', compact ? 'tx-status-panel--compact' : '', className].join(' ');
+  const containerClasses = [
+    "tx-status-panel",
+    compact ? "tx-status-panel--compact" : "",
+    className,
+  ].join(" ");
 
   const currentStepIndex =
-    phase === TxPhase.IDLE ? 0 :
-    phase === TxPhase.SUBMITTED ? 1 :
-    phase === TxPhase.PENDING ? 2 :
-    phase === TxPhase.CONFIRMED ? 3 :
-    isFailed ? 2 : 0;
+    phase === TxPhase.IDLE
+      ? 0
+      : phase === TxPhase.SUBMITTED
+        ? 1
+        : phase === TxPhase.PENDING
+          ? 2
+          : phase === TxPhase.CONFIRMED
+            ? 3
+            : isFailed
+              ? 2
+              : 0;
 
   const resolveStepStatus = (stepIndex: number): TimelineItemStatus => {
-    if (isFailed && stepIndex === currentStepIndex) return 'error';
-    if (stepIndex < currentStepIndex && !isFailed) return 'completed';
+    if (isFailed && stepIndex === currentStepIndex) return "error";
+    if (stepIndex < currentStepIndex && !isFailed) return "completed";
     if (
       (phase === TxPhase.SUBMITTED && stepIndex === 1) ||
       (phase === TxPhase.PENDING && stepIndex === 2)
-    ) return 'active';
-    return 'idle';
+    )
+      return "active";
+    return "idle";
   };
 
   const txTimelineItems: TimelineItemData[] = [
     {
-      id: 'submitted',
-      label: 'Submitted',
+      id: "submitted",
+      label: "Submitted",
       status: resolveStepStatus(1),
-      timestamp: meta?.submittedAt ? formatDate(meta.submittedAt, { timeStyle: 'short' }) : null,
+      timestamp: meta?.submittedAt
+        ? formatDate(meta.submittedAt, { timeStyle: "short" })
+        : null,
     },
     {
-      id: 'pending',
-      label: 'Pending',
+      id: "pending",
+      label: "Pending",
       status: resolveStepStatus(2),
     },
     {
-      id: 'confirmed',
-      label: 'Confirmed',
+      id: "confirmed",
+      label: "Confirmed",
       status: resolveStepStatus(3),
-      timestamp: meta?.settledAt ? formatDate(meta.settledAt, { timeStyle: 'short' }) : null,
+      timestamp: meta?.settledAt
+        ? formatDate(meta.settledAt, { timeStyle: "short" })
+        : null,
     },
   ];
 
   const badgeClass = `tx-status-panel__badge tx-status-panel__badge--${phase.toLowerCase()}`;
   const badgeTone =
-    phase === TxPhase.CONFIRMED ? 'success' :
-    phase === TxPhase.FAILED ? 'error' :
-    phase === TxPhase.SUBMITTED || phase === TxPhase.PENDING ? 'pending' :
-    'neutral';
+    phase === TxPhase.CONFIRMED
+      ? "success"
+      : phase === TxPhase.FAILED
+        ? "error"
+        : phase === TxPhase.SUBMITTED || phase === TxPhase.PENDING
+          ? "pending"
+          : "neutral";
 
   return (
     <div className={containerClasses} data-testid={testId}>
+      {announceStatus && (
+        <div
+          className="tx-status-panel__live-region"
+          role="status"
+          aria-live={isFailed ? "assertive" : "polite"}
+          aria-atomic="true"
+          data-testid={`${testId}-live-region`}
+        >
+          {getTransactionAnnouncement(phase, meta, error)}
+        </div>
+      )}
+
       <div className="tx-status-panel__header">
-        <span className="tx-status-panel__title" data-testid={`${testId}-title`}>
-          {isIdle ? 'Ready to Submit' : 'Transaction Status'}
+        <span
+          className="tx-status-panel__title"
+          data-testid={`${testId}-title`}
+        >
+          {isIdle ? "Ready to Submit" : "Transaction Status"}
         </span>
         <div className="tx-status-panel__header-badges">
           <StatusPill
@@ -247,13 +345,20 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
             ariaLabel={`Transaction phase: ${phase}`}
           />
           {network && (
-            <EnvironmentBadge environment={network} size="small" testId={`${testId}-env-badge`} />
+            <EnvironmentBadge
+              environment={network}
+              size="small"
+              testId={`${testId}-env-badge`}
+            />
           )}
         </div>
       </div>
 
       {!isIdle && (
-        <div className="tx-status-panel__timeline" data-testid={`${testId}-timeline`}>
+        <div
+          className="tx-status-panel__timeline"
+          data-testid={`${testId}-timeline`}
+        >
           <Timeline
             items={txTimelineItems}
             orientation="horizontal"
@@ -265,7 +370,9 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
 
       {isFailed && error && (
         <div className="tx-status-panel__error" data-testid={`${testId}-error`}>
-          <span className="tx-status-panel__error-title">Error: {error.code}</span>
+          <span className="tx-status-panel__error-title">
+            Error: {error.code}
+          </span>
           <p>{error.message}</p>
         </div>
       )}
@@ -273,7 +380,9 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
       {!compact && meta && (
         <div className="tx-status-panel__meta" data-testid={`${testId}-meta`}>
           <div className="tx-status-panel__meta-row">
-            <span className="tx-status-panel__meta-label">Transaction Hash</span>
+            <span className="tx-status-panel__meta-label">
+              Transaction Hash
+            </span>
             <div className="tx-status-panel__hash-row">
               <span className="tx-status-panel__hash" title={meta.hash}>
                 {formatAddress(meta.hash, { startChars: 8, endChars: 8 })}
@@ -281,13 +390,23 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
               {showCopyButton && (
                 <button
                   type="button"
-                  className={`tx-status-panel__copy-btn${copyState === 'success' ? ' tx-status-panel__copy-btn--copied' : ''}${copyState === 'error' ? ' tx-status-panel__copy-btn--error' : ''}`}
+                  className={`tx-status-panel__copy-btn${copyState === "success" ? " tx-status-panel__copy-btn--copied" : ""}${copyState === "error" ? " tx-status-panel__copy-btn--error" : ""}`}
                   onClick={handleCopy}
-                  aria-label={copyState === 'success' ? 'Copied!' : copyState === 'error' ? 'Copy failed' : 'Copy transaction hash'}
+                  aria-label={
+                    copyState === "success"
+                      ? "Copied!"
+                      : copyState === "error"
+                        ? "Copy failed"
+                        : "Copy transaction hash"
+                  }
                   aria-live="polite"
                   data-testid={`${testId}-copy-btn`}
                 >
-                  {copyState === 'success' ? '✓' : copyState === 'error' ? '✗' : '📋'}
+                  {copyState === "success"
+                    ? "✓"
+                    : copyState === "error"
+                      ? "✗"
+                      : "📋"}
                 </button>
               )}
             </div>
@@ -295,34 +414,44 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
 
           <div className="tx-status-panel__meta-row">
             <span className="tx-status-panel__meta-label">Submitted</span>
-            <span>{formatDate(meta.submittedAt, { timeStyle: 'short' })}</span>
+            <span>{formatDate(meta.submittedAt, { timeStyle: "short" })}</span>
           </div>
 
           {meta.settledAt && (
             <div className="tx-status-panel__meta-row">
               <span className="tx-status-panel__meta-label">Settled</span>
-              <span>{formatDate(meta.settledAt, { timeStyle: 'short' })}</span>
+              <span>{formatDate(meta.settledAt, { timeStyle: "short" })}</span>
             </div>
           )}
 
           {meta.confirmations > 0 && !isFailed && (
             <div className="tx-status-panel__meta-row">
               <span className="tx-status-panel__meta-label">Confirmations</span>
-              <span data-testid={`${testId}-confirmations`}>{meta.confirmations}</span>
+              <span data-testid={`${testId}-confirmations`}>
+                {meta.confirmations}
+              </span>
             </div>
           )}
 
           {meta.retryCount != null && meta.retryCount > 0 && (
-            <div className="tx-status-panel__meta-row" data-testid={`${testId}-retry-count`}>
+            <div
+              className="tx-status-panel__meta-row"
+              data-testid={`${testId}-retry-count`}
+            >
               <span className="tx-status-panel__meta-label">Retries</span>
               <span>{meta.retryCount}</span>
             </div>
           )}
 
           {meta.lastAttemptAt != null && (
-            <div className="tx-status-panel__meta-row" data-testid={`${testId}-last-attempt`}>
+            <div
+              className="tx-status-panel__meta-row"
+              data-testid={`${testId}-last-attempt`}
+            >
               <span className="tx-status-panel__meta-label">Last Attempt</span>
-              <span>{formatDate(meta.lastAttemptAt, { timeStyle: 'short' })}</span>
+              <span>
+                {formatDate(meta.lastAttemptAt, { timeStyle: "short" })}
+              </span>
             </div>
           )}
 
@@ -373,6 +502,6 @@ export const TxStatusPanel: React.FC<TxStatusPanelProps> = ({
   );
 };
 
-TxStatusPanel.displayName = 'TxStatusPanel';
+TxStatusPanel.displayName = "TxStatusPanel";
 
 export default TxStatusPanel;

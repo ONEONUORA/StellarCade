@@ -84,8 +84,13 @@
 }
 
 @keyframes wallet-badge-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /*  Body (address + network)  */
@@ -120,7 +125,7 @@
 }
 
 .wallet-status-card__value--mono {
-  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
   font-size: 0.8125rem;
 }
 
@@ -166,7 +171,10 @@
   border-radius: 0.375rem;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
   font-family: inherit;
   line-height: 1;
 }
@@ -270,7 +278,10 @@
   border-radius: 0.375rem;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
   font-family: inherit;
   line-height: 1;
 }
@@ -406,7 +417,9 @@
 }
 
 @keyframes wallet-refresh-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .wallet-status-card__history {
@@ -468,7 +481,7 @@
 }
 
 .wallet-status-card__history-address {
-  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
   font-size: 0.8125rem;
   color: #475569;
 }
@@ -477,6 +490,85 @@
   flex-wrap: wrap;
   font-size: 0.75rem;
   color: #64748b;
+}
+
+.wallet-status-card__diagnostics {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.9rem;
+}
+
+.wallet-status-card__diagnostics-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 600;
+  list-style: none;
+}
+
+.wallet-status-card__diagnostics-summary::-webkit-details-marker {
+  display: none;
+}
+
+.wallet-status-card__diagnostics-summary:focus {
+  outline: 2px solid #4a90e2;
+  outline-offset: 3px;
+}
+
+.wallet-status-card__diagnostics-summary-icon {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.wallet-status-card__diagnostics-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.85rem 0 0;
+}
+
+.wallet-status-card__diagnostics-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.wallet-status-card__diagnostics-item dt {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.wallet-status-card__diagnostics-item dd {
+  margin: 0;
+  color: #0f172a;
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.wallet-status-card__diagnostics-item--success {
+  border-color: #bbf7d0;
+}
+
+.wallet-status-card__diagnostics-item--warning {
+  border-color: #fde68a;
+}
+
+.wallet-status-card__diagnostics-item--error {
+  border-color: #fecaca;
+}
+
+.wallet-status-card__diagnostics-empty {
+  margin: 0.75rem 0 0;
+  color: #64748b;
+  font-size: 0.8125rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -494,18 +586,31 @@
   }
 
   .wallet-status-card__history-toggle,
-  .wallet-status-card__history-event {
+  .wallet-status-card__history-event,
+  .wallet-status-card__diagnostics-summary {
     color: #f8fafc;
   }
 
-  .wallet-status-card__history-item {
+  .wallet-status-card__history-item,
+  .wallet-status-card__diagnostics-item {
     background: #0f172a;
     border-color: #334155;
   }
 
   .wallet-status-card__history-address,
   .wallet-status-card__history-meta,
-  .wallet-status-card__history-toggle-icon {
+  .wallet-status-card__history-toggle-icon,
+  .wallet-status-card__diagnostics-summary-icon,
+  .wallet-status-card__diagnostics-item dt,
+  .wallet-status-card__diagnostics-empty {
     color: #94a3b8;
+  }
+
+  .wallet-status-card__diagnostics {
+    border-top-color: #334155;
+  }
+
+  .wallet-status-card__diagnostics-item dd {
+    color: #f8fafc;
   }
 }

@@ -8,10 +8,10 @@
  * @module components/v1/WalletStatusCard
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { SkeletonBase } from './LoadingSkeletonSet';
-import { EnvironmentBadge } from './EnvironmentBadge';
-import { StatusPill } from './StatusPill';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { SkeletonBase } from "./LoadingSkeletonSet";
+import { EnvironmentBadge } from "./EnvironmentBadge";
+import { StatusPill } from "./StatusPill";
 import {
   BADGE_VARIANT_MAP,
   BADGE_TONE_MAP,
@@ -19,11 +19,12 @@ import {
   type WalletStatusCardProps,
   type WalletBadgeVariant,
   type WalletCapabilities,
+  type WalletDiagnosticItem,
   type WalletStatus,
-} from './WalletStatusCard.types';
-import WalletSessionService from '../../services/wallet-session-service';
-import type { WalletSessionHistoryEntry } from '../../types/wallet-session';
-import './WalletStatusCard.css';
+} from "./WalletStatusCard.types";
+import WalletSessionService from "../../services/wallet-session-service";
+import type { WalletSessionHistoryEntry } from "../../types/wallet-session";
+import "./WalletStatusCard.css";
 
 // ── Internal helpers ───────────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ function truncateAddress(address: string): string {
 function formatLastUpdated(ts: number): string {
   const diffMs = Date.now() - ts;
   const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'Updated just now';
+  if (diffSec < 60) return "Updated just now";
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `Updated ${diffMin}m ago`;
   const diffHr = Math.floor(diffMin / 60);
@@ -51,25 +52,25 @@ function formatLastUpdated(ts: number): string {
 
 function formatSessionTime(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
-function getSessionEventLabel(type: WalletSessionHistoryEntry['type']): string {
+function getSessionEventLabel(type: WalletSessionHistoryEntry["type"]): string {
   switch (type) {
-    case 'connected':
-      return 'Connected';
-    case 'reconnected':
-      return 'Reconnected';
-    case 'disconnected':
-      return 'Disconnected';
-    case 'expired':
-      return 'Expired';
+    case "connected":
+      return "Connected";
+    case "reconnected":
+      return "Reconnected";
+    case "disconnected":
+      return "Disconnected";
+    case "expired":
+      return "Expired";
     default:
-      return 'Session update';
+      return "Session update";
   }
 }
 
@@ -80,8 +81,8 @@ function getSessionEventLabel(type: WalletSessionHistoryEntry['type']): string {
 
 function sanitize(value: string): string {
   return value
-    .replace(/<(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\/\1>/gi, '')
-    .replace(/<[^>]*>/g, '');
+    .replace(/<(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<[^>]*>/g, "");
 }
 /**
  * Derives WalletCapabilities from a WalletStatus when the caller
@@ -89,15 +90,15 @@ function sanitize(value: string): string {
  */
 function deriveCapabilities(status: WalletStatus): WalletCapabilities {
   return {
-    isConnected: status === 'CONNECTED',
-    isConnecting: status === 'CONNECTING',
-    isReconnecting: status === 'RECONNECTING',
+    isConnected: status === "CONNECTED",
+    isConnecting: status === "CONNECTING",
+    isReconnecting: status === "RECONNECTING",
     canConnect:
-      status === 'DISCONNECTED' ||
-      status === 'PROVIDER_MISSING' ||
-      status === 'PERMISSION_DENIED' ||
-      status === 'STALE_SESSION' ||
-      status === 'ERROR',
+      status === "DISCONNECTED" ||
+      status === "PROVIDER_MISSING" ||
+      status === "PERMISSION_DENIED" ||
+      status === "STALE_SESSION" ||
+      status === "ERROR",
   };
 }
 
@@ -108,7 +109,7 @@ function safeCall(
   fn: (() => void | Promise<void>) | undefined,
   label: string,
 ): void {
-  if (typeof fn !== 'function') return;
+  if (typeof fn !== "function") return;
   try {
     const result = fn();
     if (result instanceof Promise) {
@@ -137,23 +138,31 @@ interface NetworkRecoveryBannerProps {
 function NetworkRecoveryBanner({
   onRecoverNetwork,
   pending = false,
-  label = 'Recover Network',
+  label = "Recover Network",
 }: NetworkRecoveryBannerProps): React.JSX.Element {
-  const onRecover = useCallback(() => safeCall(onRecoverNetwork, 'onRecoverNetwork'), [onRecoverNetwork]);
+  const onRecover = useCallback(
+    () => safeCall(onRecoverNetwork, "onRecoverNetwork"),
+    [onRecoverNetwork],
+  );
 
   return (
-    <div className="wallet-status-card__network-mismatch" role="status" data-testid="wallet-network-mismatch">
+    <div
+      className="wallet-status-card__network-mismatch"
+      role="status"
+      data-testid="wallet-network-mismatch"
+    >
       <span className="wallet-status-card__network-mismatch-text">
-        Network mismatch detected. Switch back to a supported network to continue.
+        Network mismatch detected. Switch back to a supported network to
+        continue.
       </span>
       <button
         className="wallet-status-card__btn wallet-status-card__btn--retry"
         type="button"
         onClick={onRecover}
-        disabled={pending || typeof onRecoverNetwork !== 'function'}
+        disabled={pending || typeof onRecoverNetwork !== "function"}
         data-testid="wallet-network-recover-btn"
       >
-        {pending ? 'Checking network...' : label}
+        {pending ? "Checking network..." : label}
       </button>
     </div>
   );
@@ -175,10 +184,10 @@ interface DroppedSessionBannerProps {
 function DroppedSessionBanner({
   onReconnect,
   pending = false,
-  label = 'Reconnect',
+  label = "Reconnect",
 }: DroppedSessionBannerProps): React.JSX.Element {
   const handleReconnect = useCallback(
-    () => safeCall(onReconnect, 'onReconnect'),
+    () => safeCall(onReconnect, "onReconnect"),
     [onReconnect],
   );
 
@@ -196,11 +205,11 @@ function DroppedSessionBanner({
         className="wallet-status-card__btn wallet-status-card__btn--reconnect"
         type="button"
         onClick={handleReconnect}
-        disabled={pending || typeof onReconnect !== 'function'}
+        disabled={pending || typeof onReconnect !== "function"}
         aria-busy={pending}
         data-testid="wallet-reconnect-btn"
       >
-        {pending ? 'Reconnecting...' : label}
+        {pending ? "Reconnecting..." : label}
       </button>
     </div>
   );
@@ -220,6 +229,58 @@ function StatusBadge({ variant, label }: StatusBadgeProps): React.JSX.Element {
   );
 }
 
+function formatDiagnosticValue(value: WalletDiagnosticItem["value"]): string {
+  if (value === null || value === undefined || value === "")
+    return "Not available";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return sanitize(String(value));
+}
+
+function WalletDiagnosticsDisclosure({
+  diagnostics,
+  label = "Advanced wallet diagnostics",
+}: {
+  diagnostics: WalletDiagnosticItem[];
+  label?: string;
+}): React.JSX.Element {
+  return (
+    <details
+      className="wallet-status-card__diagnostics"
+      data-testid="wallet-diagnostics"
+    >
+      <summary className="wallet-status-card__diagnostics-summary">
+        <span>{label}</span>
+        <span
+          className="wallet-status-card__diagnostics-summary-icon"
+          aria-hidden="true"
+        >
+          Details
+        </span>
+      </summary>
+      {diagnostics.length === 0 ? (
+        <p
+          className="wallet-status-card__diagnostics-empty"
+          data-testid="wallet-diagnostics-empty"
+        >
+          No diagnostic data available.
+        </p>
+      ) : (
+        <dl className="wallet-status-card__diagnostics-list">
+          {diagnostics.map((item) => (
+            <div
+              className={`wallet-status-card__diagnostics-item wallet-status-card__diagnostics-item--${item.tone ?? "neutral"}`}
+              key={item.label}
+            >
+              <dt>{sanitize(item.label)}</dt>
+              <dd>{formatDiagnosticValue(item.value)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </details>
+  );
+}
+
 // ── Skeleton state ─────────────────────────────────────────────────────────────
 
 interface WalletStatusCardSkeletonProps {
@@ -232,12 +293,12 @@ function WalletStatusCardSkeleton({
   testId,
 }: WalletStatusCardSkeletonProps): React.JSX.Element {
   const containerClass = [
-    'wallet-status-card',
-    'wallet-status-card--skeleton',
+    "wallet-status-card",
+    "wallet-status-card--skeleton",
     className,
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   return (
     <div
@@ -291,11 +352,21 @@ function ActionButton({
   onDisconnect,
   onRetry,
 }: WalletStatusCardProps): React.JSX.Element | null {
-  const effectiveCapabilities = capabilities ?? deriveCapabilities(status ?? 'DISCONNECTED');
+  const effectiveCapabilities =
+    capabilities ?? deriveCapabilities(status ?? "DISCONNECTED");
 
-  const handleConnect = useCallback(() => safeCall(onConnect, 'onConnect'), [onConnect]);
-  const handleDisconnect = useCallback(() => safeCall(onDisconnect, 'onDisconnect'), [onDisconnect]);
-  const handleRetry = useCallback(() => safeCall(onRetry, 'onRetry'), [onRetry]);
+  const handleConnect = useCallback(
+    () => safeCall(onConnect, "onConnect"),
+    [onConnect],
+  );
+  const handleDisconnect = useCallback(
+    () => safeCall(onDisconnect, "onDisconnect"),
+    [onDisconnect],
+  );
+  const handleRetry = useCallback(
+    () => safeCall(onRetry, "onRetry"),
+    [onRetry],
+  );
 
   if (effectiveCapabilities.isConnected) {
     return (
@@ -328,11 +399,17 @@ function ActionButton({
       <button
         className="wallet-status-card__btn wallet-status-card__btn--connect"
         onClick={handleConnect}
-        disabled={effectiveCapabilities.isConnecting || effectiveCapabilities.isReconnecting}
+        disabled={
+          effectiveCapabilities.isConnecting ||
+          effectiveCapabilities.isReconnecting
+        }
         data-testid="wallet-action-btn"
         type="button"
       >
-        {effectiveCapabilities.isConnecting || effectiveCapabilities.isReconnecting ? 'Connecting...' : 'Connect'}
+        {effectiveCapabilities.isConnecting ||
+        effectiveCapabilities.isReconnecting
+          ? "Connecting..."
+          : "Connect"}
       </button>
     );
   }
@@ -342,7 +419,7 @@ function ActionButton({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-const DEFAULT_STATUS: WalletStatus = 'DISCONNECTED';
+const DEFAULT_STATUS: WalletStatus = "DISCONNECTED";
 
 /**
  * WalletStatusCard — wallet state summary component.
@@ -391,13 +468,15 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
   reconnectLabel,
   lastUpdatedAt = null,
   isRefreshing = false,
+  diagnostics,
+  diagnosticsLabel,
   className,
-  testId = 'wallet-status-card',
+  testId = "wallet-status-card",
 }) => {
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [sessionHistory, setSessionHistory] = useState<WalletSessionHistoryEntry[]>(
-    () => WalletSessionService.getRecentSessionHistory(),
-  );
+  const [sessionHistory, setSessionHistory] = useState<
+    WalletSessionHistoryEntry[]
+  >(() => WalletSessionService.getRecentSessionHistory());
 
   useEffect(() => {
     setSessionHistory(WalletSessionService.getRecentSessionHistory());
@@ -416,20 +495,19 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
 
   const sanitizedAddress = address ? sanitize(address) : null;
   const sanitizedNetwork = network ? sanitize(network) : null;
-  const sanitizedProviderName =
-    provider?.name ? sanitize(provider.name) : null;
+  const sanitizedProviderName = provider?.name ? sanitize(provider.name) : null;
   const recentSessionLabel = useMemo(
     () =>
       sessionHistory.length === 1
-        ? '1 recent session'
+        ? "1 recent session"
         : `${sessionHistory.length} recent sessions`,
     [sessionHistory.length],
   );
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  const containerClass = ['wallet-status-card', className]
+  const containerClass = ["wallet-status-card", className]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   return (
     <div
@@ -457,7 +535,10 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
 
       {/* ── Freshness row: last-updated + refresh indicator ── */}
       {(lastUpdatedAt !== null || isRefreshing) && (
-        <div className="wallet-status-card__freshness" data-testid="wallet-freshness">
+        <div
+          className="wallet-status-card__freshness"
+          data-testid="wallet-freshness"
+        >
           {isRefreshing ? (
             <span
               className="wallet-status-card__refresh-spinner"
@@ -548,7 +629,7 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
       </div>
 
       {/* ── Dropped-session banner (distinct from network mismatch) ── */}
-      {droppedSession && status !== 'CONNECTED' && (
+      {droppedSession && status !== "CONNECTED" && (
         <DroppedSessionBanner
           onReconnect={onReconnect}
           pending={reconnectPending}
@@ -566,7 +647,10 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
       )}
 
       {sessionHistory.length > 0 && (
-        <div className="wallet-status-card__history" data-testid="wallet-session-history">
+        <div
+          className="wallet-status-card__history"
+          data-testid="wallet-session-history"
+        >
           <button
             className="wallet-status-card__history-toggle"
             type="button"
@@ -574,8 +658,11 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
             onClick={() => setHistoryExpanded((current) => !current)}
           >
             <span>{recentSessionLabel}</span>
-            <span className="wallet-status-card__history-toggle-icon" aria-hidden="true">
-              {historyExpanded ? 'Hide' : 'Show'}
+            <span
+              className="wallet-status-card__history-toggle-icon"
+              aria-hidden="true"
+            >
+              {historyExpanded ? "Hide" : "Show"}
             </span>
           </button>
 
@@ -602,10 +689,17 @@ export const WalletStatusCard: React.FC<WalletStatusCardProps> = ({
           )}
         </div>
       )}
+
+      {diagnostics && (
+        <WalletDiagnosticsDisclosure
+          diagnostics={diagnostics}
+          label={diagnosticsLabel}
+        />
+      )}
     </div>
   );
 };
 
-WalletStatusCard.displayName = 'WalletStatusCard';
+WalletStatusCard.displayName = "WalletStatusCard";
 
 export default WalletStatusCard;

@@ -13,8 +13,16 @@
   border-radius: 1rem;
   border: 1px solid var(--glass-border);
   background:
-    radial-gradient(circle at top right, rgba(125, 226, 209, 0.16), transparent 32%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+    radial-gradient(
+      circle at top right,
+      rgba(125, 226, 209, 0.16),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.03)
+    );
 }
 
 .portfolio-page__title {
@@ -75,6 +83,18 @@
 
 .portfolio-page__section-state--error {
   justify-content: center;
+}
+
+.portfolio-page__section-state--loading {
+  min-height: 12rem;
+}
+
+.portfolio-page__skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  margin-top: 0.35rem;
 }
 
 .portfolio-page__content-header,

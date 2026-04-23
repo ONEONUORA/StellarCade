@@ -56,12 +56,10 @@ export type {
   WalletStatus,
   WalletCapabilities,
   WalletStatusError,
+  WalletDiagnosticItem,
 } from "./WalletStatusCard.types";
 
-export {
-  StatusPill,
-  default as StatusPillDefault,
-} from "./StatusPill";
+export { StatusPill, default as StatusPillDefault } from "./StatusPill";
 export type {
   StatusPillProps,
   StatusPillTone,
@@ -93,6 +91,7 @@ export {
   SkeletonList,
   SkeletonPreset,
   LoadingState,
+  PageSkeletonOrchestrator,
 } from "./LoadingSkeletonSet";
 export type {
   SkeletonBaseProps,
@@ -101,6 +100,9 @@ export type {
   SkeletonListProps,
   SkeletonPresetProps,
   LoadingStateProps,
+  PageSkeletonOrchestratorProps,
+  PageSkeletonSurface,
+  PageSkeletonSurfaceStatus,
 } from "./LoadingSkeletonSet";
 
 export {
@@ -153,4 +155,8 @@ export {
 } from "./QuestWorkspaceHeader";
 export type { QuestWorkspaceHeaderProps } from "../../types/v1/quest";
 export { Timeline, default as TimelineDefault } from "./Timeline";
-export type { TimelineProps, TimelineItemData, TimelineItemStatus } from "./Timeline";
+export type {
+  TimelineProps,
+  TimelineItemData,
+  TimelineItemStatus,
+} from "./Timeline";

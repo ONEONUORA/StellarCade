@@ -1,19 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import Portfolio, { type PortfolioState } from '../../src/pages/Portfolio';
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import Portfolio, { type PortfolioState } from "../../src/pages/Portfolio";
 
 function renderPortfolio(overrides?: Partial<PortfolioState>) {
   const state: PortfolioState = {
     wallet: {
-      status: 'ready',
-      items: [{ availableBalance: 0, networkLabel: 'Testnet wallet' }],
+      status: "ready",
+      items: [{ availableBalance: 0, networkLabel: "Testnet wallet" }],
     },
     rewards: {
-      status: 'ready',
+      status: "ready",
       items: [],
     },
     collectibles: {
-      status: 'ready',
+      status: "ready",
       items: [],
     },
     ...overrides,
@@ -29,64 +29,106 @@ function renderPortfolio(overrides?: Partial<PortfolioState>) {
   );
 }
 
-describe('Portfolio page', () => {
-  it('renders distinct empty states for wallet, rewards, and collectibles', () => {
+describe("Portfolio page", () => {
+  it("renders distinct empty states for wallet, rewards, and collectibles", () => {
     renderPortfolio();
-    expect(screen.getByTestId('portfolio-wallet-empty')).toBeInTheDocument();
-    expect(screen.getByTestId('portfolio-rewards-empty')).toBeInTheDocument();
-    expect(screen.getByTestId('portfolio-collectibles-empty')).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-wallet-empty")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-rewards-empty")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-collectibles-empty"),
+    ).toBeInTheDocument();
   });
 
-  it('does not render empty states while sections are loading', () => {
+  it("does not render empty states while sections are loading", () => {
     renderPortfolio({
-      wallet: { status: 'loading', items: [] },
-      rewards: { status: 'loading', items: [] },
-      collectibles: { status: 'loading', items: [] },
+      wallet: { status: "loading", items: [] },
+      rewards: { status: "loading", items: [] },
+      collectibles: { status: "loading", items: [] },
     });
 
-    expect(screen.getByTestId('portfolio-wallet-loading')).toBeInTheDocument();
-    expect(screen.getByTestId('portfolio-rewards-loading')).toBeInTheDocument();
-    expect(screen.getByTestId('portfolio-collectibles-loading')).toBeInTheDocument();
-    expect(screen.queryByTestId('portfolio-wallet-empty')).not.toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-wallet-loading")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-rewards-loading")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-collectibles-loading"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-skeleton-orchestrator"),
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByTestId("portfolio-skeleton-orchestrator"),
+    ).toHaveAttribute("data-loading-count", "3");
+    expect(
+      screen.queryByTestId("portfolio-wallet-empty"),
+    ).not.toBeInTheDocument();
   });
 
-  it('renders error states instead of empty states when fetches fail', () => {
+  it("keeps ready surfaces visible while another portfolio surface is loading", () => {
     renderPortfolio({
+      wallet: { status: "loading", items: [] },
       rewards: {
-        status: 'error',
-        items: [],
-        errorMessage: 'Rewards service unavailable.',
+        status: "ready",
+        items: [
+          { id: "r1", title: "Daily streak", amountLabel: "12 XLM bonus" },
+        ],
       },
     });
 
-    expect(screen.getByTestId('portfolio-rewards-error')).toHaveTextContent(
-      'Rewards service unavailable.',
-    );
-    expect(screen.queryByTestId('portfolio-rewards-empty')).not.toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-wallet-loading")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-rewards-populated"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-skeleton-orchestrator"),
+    ).toHaveAttribute("data-loading-count", "1");
   });
 
-  it('renders populated sections when data exists', () => {
+  it("renders error states instead of empty states when fetches fail", () => {
+    renderPortfolio({
+      rewards: {
+        status: "error",
+        items: [],
+        errorMessage: "Rewards service unavailable.",
+      },
+    });
+
+    expect(screen.getByTestId("portfolio-rewards-error")).toHaveTextContent(
+      "Rewards service unavailable.",
+    );
+    expect(
+      screen.queryByTestId("portfolio-rewards-empty"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders populated sections when data exists", () => {
     renderPortfolio({
       wallet: {
-        status: 'ready',
-        items: [{ availableBalance: 24.5, networkLabel: 'Mainnet wallet' }],
+        status: "ready",
+        items: [{ availableBalance: 24.5, networkLabel: "Mainnet wallet" }],
       },
       rewards: {
-        status: 'ready',
-        items: [{ id: 'r1', title: 'Daily streak', amountLabel: '12 XLM bonus' }],
+        status: "ready",
+        items: [
+          { id: "r1", title: "Daily streak", amountLabel: "12 XLM bonus" },
+        ],
       },
       collectibles: {
-        status: 'ready',
-        items: [{ id: 'c1', name: 'Genesis Blaster', rarity: 'Epic' }],
+        status: "ready",
+        items: [{ id: "c1", name: "Genesis Blaster", rarity: "Epic" }],
       },
     });
 
-    expect(screen.getByTestId('portfolio-wallet-populated')).toBeInTheDocument();
-    expect(screen.getByTestId('portfolio-rewards-populated')).toBeInTheDocument();
-    expect(screen.getByTestId('portfolio-collectibles-populated')).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-wallet-populated"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-rewards-populated"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("portfolio-collectibles-populated"),
+    ).toBeInTheDocument();
   });
 
-  it('wires empty-state CTA callbacks', () => {
+  it("wires empty-state CTA callbacks", () => {
     const onOpenWallet = vi.fn();
     const onBrowseRewards = vi.fn();
     const onBrowseCollectibles = vi.fn();
@@ -99,9 +141,9 @@ describe('Portfolio page', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Open wallet tools'));
-    fireEvent.click(screen.getByText('Browse reward paths'));
-    fireEvent.click(screen.getByText('Browse collectibles'));
+    fireEvent.click(screen.getByText("Open wallet tools"));
+    fireEvent.click(screen.getByText("Browse reward paths"));
+    fireEvent.click(screen.getByText("Browse collectibles"));
 
     expect(onOpenWallet).toHaveBeenCalledTimes(1);
     expect(onBrowseRewards).toHaveBeenCalledTimes(1);

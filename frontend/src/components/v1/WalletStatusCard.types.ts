@@ -7,8 +7,12 @@
  * @module components/v1/WalletStatusCard.types
  */
 
-import type { WalletStatus, WalletCapabilities, WalletStatusError } from '../../hooks/v1/useWalletStatus';
-import type { WalletProviderInfo } from '../../types/wallet-session';
+import type {
+  WalletStatus,
+  WalletCapabilities,
+  WalletStatusError,
+} from "../../hooks/v1/useWalletStatus";
+import type { WalletProviderInfo } from "../../types/wallet-session";
 
 // Re-export hook types so consumers only need one import
 export type { WalletStatus, WalletCapabilities, WalletStatusError };
@@ -23,46 +27,49 @@ export type { WalletStatus, WalletCapabilities, WalletStatusError };
  * - `error`        : Any error state (provider missing, denied, stale, unknown).
  */
 export type WalletBadgeVariant =
-  | 'connected'
-  | 'disconnected'
-  | 'connecting'
-  | 'reconnecting'
-  | 'error';
+  | "connected"
+  | "disconnected"
+  | "connecting"
+  | "reconnecting"
+  | "error";
 
-export const BADGE_TONE_MAP: Record<WalletBadgeVariant, 'success' | 'pending' | 'warning' | 'error' | 'neutral'> = {
-  connected: 'success',
-  disconnected: 'neutral',
-  connecting: 'pending',
-  reconnecting: 'warning',
-  error: 'error',
+export const BADGE_TONE_MAP: Record<
+  WalletBadgeVariant,
+  "success" | "pending" | "warning" | "error" | "neutral"
+> = {
+  connected: "success",
+  disconnected: "neutral",
+  connecting: "pending",
+  reconnecting: "warning",
+  error: "error",
 };
 
 /**
  * Maps a WalletStatus string to a WalletBadgeVariant for rendering.
  */
 export const BADGE_VARIANT_MAP: Record<WalletStatus, WalletBadgeVariant> = {
-  CONNECTED: 'connected',
-  DISCONNECTED: 'disconnected',
-  CONNECTING: 'connecting',
-  RECONNECTING: 'reconnecting',
-  PROVIDER_MISSING: 'error',
-  PERMISSION_DENIED: 'error',
-  STALE_SESSION: 'error',
-  ERROR: 'error',
+  CONNECTED: "connected",
+  DISCONNECTED: "disconnected",
+  CONNECTING: "connecting",
+  RECONNECTING: "reconnecting",
+  PROVIDER_MISSING: "error",
+  PERMISSION_DENIED: "error",
+  STALE_SESSION: "error",
+  ERROR: "error",
 };
 
 /**
  * Human-readable label for each WalletStatus value.
  */
 export const STATUS_LABEL_MAP: Record<WalletStatus, string> = {
-  CONNECTED: 'Connected',
-  DISCONNECTED: 'Disconnected',
-  CONNECTING: 'Connecting…',
-  RECONNECTING: 'Reconnecting…',
-  PROVIDER_MISSING: 'No Wallet Found',
-  PERMISSION_DENIED: 'Permission Denied',
-  STALE_SESSION: 'Session Expired',
-  ERROR: 'Error',
+  CONNECTED: "Connected",
+  DISCONNECTED: "Disconnected",
+  CONNECTING: "Connecting…",
+  RECONNECTING: "Reconnecting…",
+  PROVIDER_MISSING: "No Wallet Found",
+  PERMISSION_DENIED: "Permission Denied",
+  STALE_SESSION: "Session Expired",
+  ERROR: "Error",
 };
 
 /**
@@ -98,6 +105,12 @@ export interface WalletStatusCardCallbacks {
    * Distinct from `onRetry`; intended for session-recovery flows.
    */
   onReconnect?: () => void | Promise<void>;
+}
+
+export interface WalletDiagnosticItem {
+  label: string;
+  value: string | number | boolean | null | undefined;
+  tone?: "neutral" | "success" | "warning" | "error";
 }
 
 /**
@@ -225,4 +238,17 @@ export interface WalletStatusCardProps extends WalletStatusCardCallbacks {
    * @default false
    */
   isRefreshing?: boolean;
+
+  /**
+   * Optional advanced wallet diagnostics shown behind progressive disclosure.
+   * Use for technical details such as RPC health, provider capabilities, or
+   * recovery hints that should not dominate the default wallet status view.
+   */
+  diagnostics?: WalletDiagnosticItem[];
+
+  /**
+   * Custom label for the diagnostics disclosure control.
+   * @default 'Advanced wallet diagnostics'
+   */
+  diagnosticsLabel?: string;
 }
