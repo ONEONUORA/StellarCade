@@ -53,4 +53,11 @@ describe('PrizePoolStateCard', () => {
         render(<PrizePoolStateCard state={null} />);
         expect(screen.getByTestId('prizepool-state-card-balance')).toHaveTextContent('0.00');
     });
+
+    it('wraps the card in a transition guard for empty-to-populated animations (#554)', () => {
+        render(<PrizePoolStateCard state={mockState} />);
+        const guard = screen.getByTestId('prizepool-state-card-transition');
+        expect(guard).toBeInTheDocument();
+        expect(guard).toHaveAttribute('data-populated', 'true');
+    });
 });

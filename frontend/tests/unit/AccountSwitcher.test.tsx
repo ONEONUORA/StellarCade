@@ -263,5 +263,3 @@ describe('AccountSwitcher — accessibility', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 });
-
-});
