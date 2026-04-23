@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import { PrizePoolStateCard } from '../../../src/components/v1/PrizePoolStateCard';
@@ -54,10 +54,17 @@ describe('PrizePoolStateCard', () => {
         expect(screen.getByTestId('prizepool-state-card-balance')).toHaveTextContent('0.00');
     });
 
-    it('wraps the card in a transition guard for empty-to-populated animations (#554)', () => {
-        render(<PrizePoolStateCard state={mockState} />);
+    it('animates when transitioning from empty to populated (#554)', async () => {
+        const { rerender } = render(<PrizePoolStateCard state={null} />);
         const guard = screen.getByTestId('prizepool-state-card-transition');
-        expect(guard).toBeInTheDocument();
-        expect(guard).toHaveAttribute('data-populated', 'true');
+        expect(guard).toHaveAttribute('data-populated', 'false');
+        expect(guard).toHaveAttribute('data-animating', 'false');
+
+        rerender(<PrizePoolStateCard state={mockState} />);
+
+        await waitFor(() => {
+            expect(guard).toHaveAttribute('data-populated', 'true');
+            expect(guard).toHaveAttribute('data-animating', 'true');
+        });
     });
 });
