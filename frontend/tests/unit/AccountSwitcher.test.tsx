@@ -2,13 +2,13 @@
  * @vitest-environment happy-dom
  */
 
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RecentAccount } from '@/components/v1/AccountSwitcher.types';
 
 // ── Mock account-memory-service ──────────────────────────────────────────────
 
-const mockGetRecentAccounts = vi.fn(() => []);
+const mockGetRecentAccounts = vi.fn(() => [] as RecentAccount[]);
 const mockRecordAccountUsage = vi.fn();
 const mockRemoveAccount = vi.fn();
 
@@ -262,6 +262,4 @@ describe('AccountSwitcher — accessibility', () => {
     fireEvent.click(screen.getByTestId('account-switcher-trigger'));
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
-});
-
 });

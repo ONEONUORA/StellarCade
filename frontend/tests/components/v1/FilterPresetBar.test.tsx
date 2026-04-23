@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { FilterPresetBar } from '@/components/v1/FilterPresetBar';
 
 describe('FilterPresetBar', () => {
@@ -8,10 +8,15 @@ describe('FilterPresetBar', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanup();
+  });
+
   it('shows empty state when no presets exist', () => {
     render(
       <FilterPresetBar
-        scope="test"
+        scope="test-delete"
         currentFilters={{}}
         onApply={vi.fn()}
       />
@@ -64,9 +69,7 @@ describe('FilterPresetBar', () => {
     fireEvent.change(input, { target: { value: 'Active Filter' } });
     fireEvent.click(screen.getByTestId('filter-preset-bar-save-btn'));
 
-    const list = screen.getByTestId('filter-preset-bar-list');
-    const applyBtn = list.querySelector('[data-testid^="filter-preset-bar-apply-"]') as HTMLElement;
-    fireEvent.click(applyBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Active Filter' }));
 
     expect(onApply).toHaveBeenCalledOnce();
     const calledWith = onApply.mock.calls[0][0];
@@ -75,25 +78,25 @@ describe('FilterPresetBar', () => {
   });
 
   it('deleting a preset removes it from the list', () => {
-    render(
+    const { container } = render(
       <FilterPresetBar
-        scope="test"
+        scope="test-delete"
         currentFilters={{}}
         onApply={vi.fn()}
       />
     );
-    const input = screen.getByTestId('filter-preset-bar-name-input');
+    const scoped = within(container);
+    const root = scoped.getByTestId('filter-preset-bar');
+    const input = scoped.getByTestId('filter-preset-bar-name-input');
     fireEvent.change(input, { target: { value: 'To Delete' } });
-    fireEvent.click(screen.getByTestId('filter-preset-bar-save-btn'));
+    fireEvent.click(scoped.getByTestId('filter-preset-bar-save-btn'));
 
-    expect(screen.getByText('To Delete')).toBeTruthy();
+    expect(scoped.getByText('To Delete')).toBeTruthy();
 
-    const list = screen.getByTestId('filter-preset-bar-list');
-    const deleteBtn = list.querySelector('[data-testid^="filter-preset-bar-delete-"]') as HTMLElement;
-    fireEvent.click(deleteBtn);
+    fireEvent.click(scoped.getByLabelText('Delete preset To Delete'));
 
-    expect(screen.queryByText('To Delete')).toBeNull();
-    expect(screen.getByTestId('filter-preset-bar-empty')).toBeTruthy();
+    expect(scoped.queryByText('To Delete')).toBeNull();
+    expect(within(root).getByTestId('filter-preset-bar-empty')).toBeTruthy();
   });
 
   it('Enter key saves the preset', () => {
