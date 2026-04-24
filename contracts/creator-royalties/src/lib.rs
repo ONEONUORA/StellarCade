@@ -3,7 +3,7 @@
 mod storage;
 mod types;
 
-use soroban_sdk::{contract, contractimpl, contracttype, contracterror, Address, Env, Vec};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, Vec};
 
 pub use types::{
     AccrualRecord, AccrualSummary, PayoutSchedule, PayoutScheduleEntry, RoyaltyConfig,
@@ -210,7 +210,11 @@ impl CreatorRoyalties {
     // ── Read-only accessors ────────────────────────────────────────────────────
 
     /// Returns a full accrual summary for a creator.
-    /// Returns an empty/zero summary when the creator is not configured.
+    ///
+    /// Unknown or not-yet-configured creators return a zeroed summary with
+    /// `exists = false`. In that case `token` is a placeholder value copied
+    /// from the queried creator address, so consumers must branch on `exists`
+    /// before using token-specific fields.
     pub fn accrual_summary(env: Env, creator: Address) -> AccrualSummary {
         let config_opt = storage::get_config(&env, &creator);
         let accrual_opt = storage::get_accrual(&env, &creator);
@@ -250,7 +254,11 @@ impl CreatorRoyalties {
     }
 
     /// Returns the payout schedule for a creator.
-    /// Returns an empty schedule when none has been set up.
+    ///
+    /// Unknown or not-yet-configured creators return `exists = false`,
+    /// `interval_ledgers = 0`, and an empty `pending_entries` list. Configured
+    /// creators with no scheduled entries return `exists = true` and the same
+    /// zero-value schedule fields.
     pub fn payout_schedule(env: Env, creator: Address) -> PayoutSchedule {
         let config_opt = storage::get_config(&env, &creator);
         if config_opt.is_none() {

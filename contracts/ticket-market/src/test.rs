@@ -15,6 +15,10 @@ fn game_id(env: &Env) -> Symbol {
     Symbol::new(env, "FLIP")
 }
 
+fn other_game_id(env: &Env) -> Symbol {
+    Symbol::new(env, "RACE")
+}
+
 // ── orderbook_summary ─────────────────────────────────────────────────────────
 
 #[test]
@@ -102,6 +106,91 @@ fn test_listing_expiry_sold_listing() {
     let expiry = client.listing_expiry(&id);
     assert!(expiry.exists);
     assert_eq!(expiry.status, ListingStatus::Sold);
+}
+
+// —— listing_depth_summary ——————————————————————————————————————————————————————————————
+
+#[test]
+fn test_listing_depth_summary_filters_by_game() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _token, seller) = setup(&env);
+
+    client.list_ticket(&seller, &game_id(&env), &500, &200);
+    client.list_ticket(&seller, &game_id(&env), &1_500, &200);
+    client.list_ticket(&seller, &other_game_id(&env), &5_000, &200);
+
+    let summary = client.listing_depth_summary(&game_id(&env));
+    assert_eq!(summary.active_count, 2);
+    assert_eq!(summary.best_ask, 500);
+    assert_eq!(summary.worst_ask, 1_500);
+    assert_eq!(summary.total_volume, 2_000);
+}
+
+#[test]
+fn test_listing_depth_summary_empty_game_returns_zeroes() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _token, _seller) = setup(&env);
+
+    let summary = client.listing_depth_summary(&game_id(&env));
+    assert_eq!(summary.active_count, 0);
+    assert_eq!(summary.best_ask, 0);
+    assert_eq!(summary.worst_ask, 0);
+    assert_eq!(summary.total_volume, 0);
+}
+
+// —— purchase_eligibility ———————————————————————————————————————————————————————————————
+
+#[test]
+fn test_purchase_eligibility_happy_path() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _token, seller) = setup(&env);
+    let buyer = Address::generate(&env);
+
+    let id = client.list_ticket(&seller, &game_id(&env), &750, &500);
+    let eligibility = client.purchase_eligibility(&id, &buyer);
+
+    assert!(eligibility.exists);
+    assert!(eligibility.can_purchase);
+    assert_eq!(eligibility.reason, PurchaseEligibilityReason::Eligible);
+    assert_eq!(eligibility.price, 750);
+}
+
+#[test]
+fn test_purchase_eligibility_rejects_seller_buyback() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _token, seller) = setup(&env);
+
+    let id = client.list_ticket(&seller, &game_id(&env), &750, &500);
+    let eligibility = client.purchase_eligibility(&id, &seller);
+
+    assert!(eligibility.exists);
+    assert!(!eligibility.can_purchase);
+    assert!(eligibility.seller_is_buyer);
+    assert_eq!(
+        eligibility.reason,
+        PurchaseEligibilityReason::SellerCannotPurchaseOwnListing
+    );
+}
+
+#[test]
+fn test_purchase_eligibility_unknown_listing_is_predictable() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _token, _seller) = setup(&env);
+    let buyer = Address::generate(&env);
+
+    let eligibility = client.purchase_eligibility(&999u64, &buyer);
+    assert!(!eligibility.exists);
+    assert!(!eligibility.can_purchase);
+    assert_eq!(
+        eligibility.reason,
+        PurchaseEligibilityReason::ListingMissing
+    );
+    assert_eq!(eligibility.price, 0);
 }
 
 // ── error paths ───────────────────────────────────────────────────────────────

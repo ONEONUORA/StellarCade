@@ -41,6 +41,24 @@ pub struct OrderbookSummary {
     pub current_ledger: u32,
 }
 
+/// Summary of active listing depth for one game or event.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ListingDepthSummary {
+    /// Game or event identifier this summary was computed for.
+    pub game_id: Symbol,
+    /// Total number of active, non-expired listings for the game.
+    pub active_count: u64,
+    /// Lowest ask price among matching listings (0 when there is no depth).
+    pub best_ask: i128,
+    /// Highest ask price among matching listings (0 when there is no depth).
+    pub worst_ask: i128,
+    /// Sum of all active listing prices for the game.
+    pub total_volume: i128,
+    /// Current ledger sequence used for the expiry check.
+    pub current_ledger: u32,
+}
+
 /// Expiry details for a single listing.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -53,4 +71,42 @@ pub struct ListingExpiry {
     /// True when expires_at_ledger <= current_ledger.
     pub is_expired: bool,
     pub status: ListingStatus,
+}
+
+/// Stable reason code returned by `purchase_eligibility`.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PurchaseEligibilityReason {
+    Eligible,
+    ListingMissing,
+    ListingNotActive,
+    ListingExpired,
+    SellerCannotPurchaseOwnListing,
+}
+
+/// Read-only purchase check for a specific listing and buyer.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PurchaseEligibility {
+    pub listing_id: u64,
+    /// True when the listing exists in storage.
+    pub exists: bool,
+    /// Current listing status snapshot.
+    pub status: ListingStatus,
+    /// Game or event identifier; `None` when the listing is unknown.
+    pub game_id: Option<Symbol>,
+    /// Seller address; `None` when the listing is unknown.
+    pub seller: Option<Address>,
+    /// Ask price; `0` when the listing is unknown.
+    pub price: i128,
+    /// Current ledger sequence used for expiry evaluation.
+    pub current_ledger: u32,
+    /// True when the listing has passed its expiry ledger.
+    pub is_expired: bool,
+    /// True when the buyer matches the seller address.
+    pub seller_is_buyer: bool,
+    /// Final caller-facing eligibility flag.
+    pub can_purchase: bool,
+    /// Stable machine-readable reason code.
+    pub reason: PurchaseEligibilityReason,
 }

@@ -3,9 +3,12 @@
 mod storage;
 mod types;
 
-use soroban_sdk::{contract, contractimpl, contracttype, contracterror, Address, Env, Symbol};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, Symbol};
 
-pub use types::{Listing, ListingExpiry, ListingStatus, OrderbookSummary};
+pub use types::{
+    Listing, ListingDepthSummary, ListingExpiry, ListingStatus, OrderbookSummary,
+    PurchaseEligibility, PurchaseEligibilityReason,
+};
 
 const BUMP_AMOUNT: u32 = 518_400;
 const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT / 2;
@@ -88,8 +91,7 @@ impl TicketMarket {
     /// Cancel a listing (seller only).
     pub fn cancel_listing(env: Env, seller: Address, listing_id: u64) -> Result<(), Error> {
         seller.require_auth();
-        let mut listing =
-            storage::get_listing(&env, listing_id).ok_or(Error::ListingNotFound)?;
+        let mut listing = storage::get_listing(&env, listing_id).ok_or(Error::ListingNotFound)?;
         if listing.seller != seller {
             return Err(Error::CannotCancelOthersListing);
         }
@@ -111,8 +113,7 @@ impl TicketMarket {
             .ok_or(Error::NotInitialized)?;
         admin.require_auth();
 
-        let mut listing =
-            storage::get_listing(&env, listing_id).ok_or(Error::ListingNotFound)?;
+        let mut listing = storage::get_listing(&env, listing_id).ok_or(Error::ListingNotFound)?;
         if listing.status != ListingStatus::Active {
             return Err(Error::ListingNotActive);
         }
@@ -188,6 +189,105 @@ impl TicketMarket {
                 current_ledger,
                 is_expired: false,
                 status: ListingStatus::Cancelled,
+            },
+        }
+    }
+
+    /// Returns active listing depth for one game identifier.
+    ///
+    /// Empty depth is represented with zero counts and prices so consumers do
+    /// not need to special-case missing state.
+    pub fn listing_depth_summary(env: Env, game_id: Symbol) -> ListingDepthSummary {
+        let current_ledger = env.ledger().sequence();
+        let ids = storage::get_active_ids(&env);
+
+        let mut active_count: u64 = 0;
+        let mut best_ask: i128 = i128::MAX;
+        let mut worst_ask: i128 = 0;
+        let mut total_volume: i128 = 0;
+
+        for id in ids.iter() {
+            if let Some(listing) = storage::get_listing(&env, id) {
+                if listing.game_id == game_id
+                    && listing.status == ListingStatus::Active
+                    && listing.expires_at_ledger > current_ledger
+                {
+                    active_count = active_count.saturating_add(1);
+                    if listing.price < best_ask {
+                        best_ask = listing.price;
+                    }
+                    if listing.price > worst_ask {
+                        worst_ask = listing.price;
+                    }
+                    total_volume = total_volume.saturating_add(listing.price);
+                }
+            }
+        }
+
+        if active_count == 0 {
+            best_ask = 0;
+        }
+
+        ListingDepthSummary {
+            game_id,
+            active_count,
+            best_ask,
+            worst_ask,
+            total_volume,
+            current_ledger,
+        }
+    }
+
+    /// Returns whether a buyer can purchase a listing under the current
+    /// storage-backed status and expiry rules.
+    ///
+    /// Unknown listings return `exists = false`, `can_purchase = false`, and a
+    /// `ListingMissing` reason. Expired listings remain readable and report
+    /// `ListingExpired` without mutating their stored status.
+    pub fn purchase_eligibility(env: Env, listing_id: u64, buyer: Address) -> PurchaseEligibility {
+        let current_ledger = env.ledger().sequence();
+        match storage::get_listing(&env, listing_id) {
+            Some(listing) => {
+                let seller_is_buyer = listing.seller == buyer;
+                let is_expired = listing.expires_at_ledger <= current_ledger;
+                let status = listing.status.clone();
+
+                let reason = if seller_is_buyer {
+                    PurchaseEligibilityReason::SellerCannotPurchaseOwnListing
+                } else if status != ListingStatus::Active {
+                    PurchaseEligibilityReason::ListingNotActive
+                } else if is_expired {
+                    PurchaseEligibilityReason::ListingExpired
+                } else {
+                    PurchaseEligibilityReason::Eligible
+                };
+
+                PurchaseEligibility {
+                    listing_id,
+                    exists: true,
+                    status,
+                    game_id: Some(listing.game_id),
+                    seller: Some(listing.seller),
+                    price: listing.price,
+                    current_ledger,
+                    is_expired,
+                    seller_is_buyer,
+                    can_purchase: reason == PurchaseEligibilityReason::Eligible,
+                    reason,
+                }
+            }
+            None => PurchaseEligibility {
+                listing_id,
+                exists: false,
+                status: ListingStatus::Cancelled,
+                game_id: None,
+                seller: None,
+                price: 0,
+                current_ledger,
+                is_expired: false,
+                seller_is_buyer: false,
+                can_purchase: false,
+                reason: PurchaseEligibilityReason::ListingMissing,
             },
         }
     }

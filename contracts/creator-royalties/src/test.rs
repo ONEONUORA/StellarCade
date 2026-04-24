@@ -123,8 +123,8 @@ fn test_claim_scheduled_moves_entries_to_paid() {
 
     client.configure(&creator, &500, &token);
     client.record_accrual(&creator, &1_000_000);
-    // claimable_at_ledger=1 is in the past relative to ledger sequence 0
-    client.schedule_payout(&creator, &1, &400_000);
+    // claimable_at_ledger=0 is immediately claimable at the default ledger sequence.
+    client.schedule_payout(&creator, &0, &400_000);
     client.schedule_payout(&creator, &999_999, &600_000); // future
 
     let claimed = client.claim_scheduled(&creator);
