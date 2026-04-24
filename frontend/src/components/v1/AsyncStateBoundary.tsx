@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AsyncStatus } from '../../types/v1/async';
+import { RecoverableErrorPanel } from './RecoverableErrorPanel';
 
 export interface AsyncStateBoundaryProps<T, E = unknown> {
   status: AsyncStatus;
@@ -86,14 +87,13 @@ export function AsyncStateBoundary<T, E = unknown>({
     }
 
     return (
-      <div data-testid={`${testId}-error`}>
-        <p>Something went wrong.</p>
-        {onRetry && (
-          <button type="button" onClick={onRetry} data-testid={`${testId}-retry`}>
-            Retry
-          </button>
-        )}
-      </div>
+      <RecoverableErrorPanel
+        title="Something went wrong"
+        message="We could not finish loading this content."
+        description="Try the request again to recover the page without leaving your current flow."
+        onRetry={onRetry}
+        testId={`${testId}-error`}
+      />
     );
   }
 

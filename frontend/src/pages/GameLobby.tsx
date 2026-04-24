@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiClient } from "../services/typed-api-sdk";
 import { Game } from "../types/api-client";
 import StatusCard from "../components/v1/StatusCard";
@@ -15,6 +9,11 @@ import { DataTable, type DataTableColumn } from "../components/v1/DataTable";
 import { SkeletonPreset } from "../components/v1/LoadingSkeletonSet";
 import TransactionDetailDrawer from "../components/v1/TransactionDetailDrawer";
 import SectionHeader from "../components/v1/SectionHeader";
+import { commandStore } from "../components/v1/CommandPalette";
+import { DashboardMissionStrip } from "../components/v1/DashboardMissionStrip";
+import { QuickActionSurface } from "../components/v1/QuickActionSurface";
+import { RecoverableErrorPanel } from "../components/v1/RecoverableErrorPanel";
+import { WalletSessionActivityRail } from "../components/v1/WalletSessionActivityRail";
 import { isSupportedNetwork } from "../utils/v1/useNetworkGuard";
 import { useWalletStatus } from "../hooks/v1/useWalletStatus";
 import GlobalStateStore, {
@@ -24,16 +23,11 @@ import GlobalStateStore, {
   type TableDensityPreference,
 } from "../services/global-state-store";
 import type { PendingTransactionSnapshot } from "../types/global-state";
-
-// ─── Onboarding Checklist ────────────────────────────────────────────────────
-
-const CHECKLIST_ITEMS = [
-  { id: "connect-wallet", label: "Connect your Stellar wallet" },
-  { id: "browse-games", label: "Browse available games" },
-  { id: "place-wager", label: "Place your first wager" },
-] as const;
+import "./GameLobbyDashboard.css";
 
 const DASHBOARD_DENSITY_SCOPE = "dashboard-surfaces";
+const DASHBOARD_COMMAND_SURFACE_USED_KEY = "stc_dashboard_command_surface_used_v1";
+const DASHBOARD_SESSION_KEY = "stc_dashboard_session_seen_v1";
 
 interface LeaderboardRow {
   rank: number;
@@ -42,63 +36,6 @@ interface LeaderboardRow {
   status: string;
   wager: number;
 }
-
-interface FirstTimeChecklistProps {
-  onDismiss: () => void;
-}
-
-const FirstTimeChecklist: React.FC<FirstTimeChecklistProps> = ({
-  onDismiss,
-}) => {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-
-  const toggle = useCallback((id: string) => {
-    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
-
-  return (
-    <aside
-      className="onboarding-checklist"
-      aria-label="Getting started checklist"
-      data-testid="onboarding-checklist"
-    >
-      <div className="onboarding-checklist__header">
-        <h3 className="onboarding-checklist__title">Get Started</h3>
-        <button
-          type="button"
-          className="onboarding-checklist__dismiss"
-          onClick={onDismiss}
-          aria-label="Dismiss checklist"
-          data-testid="onboarding-checklist-dismiss"
-        >
-          ×
-        </button>
-      </div>
-      <ul className="onboarding-checklist__list">
-        {CHECKLIST_ITEMS.map((item) => (
-          <li key={item.id} className="onboarding-checklist__item">
-            <label className="onboarding-checklist__label">
-              <input
-                type="checkbox"
-                className="onboarding-checklist__checkbox"
-                checked={!!checked[item.id]}
-                onChange={() => toggle(item.id)}
-                data-testid={`checklist-item-${item.id}`}
-              />
-              <span
-                className={
-                  checked[item.id] ? "onboarding-checklist__text--done" : ""
-                }
-              >
-                {item.label}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
-};
 
 function formatCompactAddress(address: string | null): string {
   if (!address) {
@@ -124,15 +61,41 @@ export const GameLobby: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [lastGamesSyncAt, setLastGamesSyncAt] = useState<number | null>(null);
   const [networkCheckPending, setNetworkCheckPending] = useState(false);
   const [pendingTransaction, setPendingTransaction] =
     useState<PendingTransactionSnapshot | null>(null);
   const [isTransactionDrawerOpen, setIsTransactionDrawerOpen] = useState(false);
+  const [quickActionsUsed, setQuickActionsUsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      return sessionStorage.getItem(DASHBOARD_COMMAND_SURFACE_USED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [isNewDashboardSession] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      const isNewSession = sessionStorage.getItem(DASHBOARD_SESSION_KEY) !== "true";
+      sessionStorage.setItem(DASHBOARD_SESSION_KEY, "true");
+      return isNewSession;
+    } catch {
+      return false;
+    }
+  });
   const [tableDensity, setTableDensity] = useState<TableDensityPreference>(() =>
     getTableDensityPreference(DASHBOARD_DENSITY_SCOPE),
   );
   const wallet = useWalletStatus();
   const globalStoreRef = useRef<GlobalStateStore | null>(null);
+  const walletSectionRef = useRef<HTMLDivElement | null>(null);
+  const gamesSectionRef = useRef<HTMLElement | null>(null);
+  const activityRailRef = useRef<HTMLDivElement | null>(null);
 
   if (!globalStoreRef.current) {
     globalStoreRef.current = new GlobalStateStore();
@@ -207,6 +170,7 @@ export const GameLobby: React.FC = () => {
     if (result.success) {
       setGames(result.data);
       setError(null);
+      setLastGamesSyncAt(Date.now());
       return true;
     }
 
@@ -253,6 +217,32 @@ export const GameLobby: React.FC = () => {
   const recoverNetwork = useCallback(async () => {
     await retryNetworkCheck();
   }, [retryNetworkCheck]);
+
+  const scrollToElement = useCallback((element: HTMLElement | null) => {
+    element?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const markQuickActionsUsed = useCallback(() => {
+    setQuickActionsUsed(true);
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      sessionStorage.setItem(DASHBOARD_COMMAND_SURFACE_USED_KEY, "true");
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  const openCommandCenter = useCallback(() => {
+    markQuickActionsUsed();
+    commandStore.dispatch({ type: "COMMAND_PALETTE_OPEN" });
+  }, [markQuickActionsUsed]);
+
+  const handleRefreshLobby = useCallback(async () => {
+    markQuickActionsUsed();
+    await handleRetryLoadGames();
+  }, [handleRetryLoadGames, markQuickActionsUsed]);
 
   const activeGames = useMemo(
     () =>
@@ -331,6 +321,172 @@ export const GameLobby: React.FC = () => {
     persistTableDensityPreference(DASHBOARD_DENSITY_SCOPE, density);
   }, []);
 
+  const missionItems = useMemo(
+    () => [
+      {
+        id: "connect-wallet",
+        title: "Review wallet readiness",
+        description:
+          "Open the wallet panel to connect or verify the current network before you start a match.",
+        complete: wallet.capabilities.isConnected,
+        actionLabel: "Open wallet panel",
+        onAction: () => scrollToElement(walletSectionRef.current),
+      },
+      {
+        id: "scan-live-games",
+        title: "Scan the live arena",
+        description:
+          "Jump to the active game grid and confirm which matches are open right now.",
+        complete: games.length > 0,
+        actionLabel: "Jump to games",
+        onAction: () => scrollToElement(gamesSectionRef.current),
+      },
+      {
+        id: "learn-commands",
+        title: "Try the dashboard command surface",
+        description:
+          "Launch the command center or use a quick action so common tasks stay close at hand.",
+        complete: quickActionsUsed,
+        actionLabel: "Open command center",
+        onAction: openCommandCenter,
+      },
+    ],
+    [
+      games.length,
+      openCommandCenter,
+      quickActionsUsed,
+      scrollToElement,
+      wallet.capabilities.isConnected,
+    ],
+  );
+
+  const quickActions = useMemo(
+    () => [
+      {
+        id: "command-center",
+        label: "Open command center",
+        description: "Browse common dashboard actions and navigation shortcuts.",
+        shortcutHint: "Ctrl+K",
+        onSelect: openCommandCenter,
+      },
+      {
+        id: "wallet-panel",
+        label: "Review wallet panel",
+        description: "Jump to wallet status, provider details, and network diagnostics.",
+        onSelect: () => {
+          markQuickActionsUsed();
+          scrollToElement(walletSectionRef.current);
+        },
+      },
+      {
+        id: "refresh-lobby",
+        label: "Refresh live data",
+        description: "Re-run the lobby fetch without leaving the current dashboard flow.",
+        onSelect: handleRefreshLobby,
+        disabled: retrying,
+      },
+      {
+        id: "session-activity",
+        label: "Open activity rail",
+        description: "Review the latest wallet-session sync, tx, and lobby refresh events.",
+        onSelect: () => {
+          markQuickActionsUsed();
+          scrollToElement(activityRailRef.current);
+        },
+      },
+    ],
+    [handleRefreshLobby, markQuickActionsUsed, openCommandCenter, retrying, scrollToElement],
+  );
+
+  const activityItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      label: string;
+      summary: string;
+      detail?: string;
+      timestampLabel?: string;
+      tone?: "neutral" | "info" | "success" | "warning" | "error";
+    }> = [];
+
+    if (lastGamesSyncAt) {
+      items.push({
+        id: "games-refresh",
+        label: "Lobby refreshed",
+        summary: `${games.length} game${games.length === 1 ? "" : "s"} were included in the latest dashboard sync.`,
+        detail:
+          games.length > 0
+            ? `${activeGames.length} active match${activeGames.length === 1 ? "" : "es"} are ready to browse.`
+            : "No live matches were available on the latest refresh.",
+        timestampLabel: new Date(lastGamesSyncAt).toLocaleTimeString(),
+        tone: games.length > 0 ? "success" : "neutral",
+      });
+    }
+
+    if (wallet.lastUpdatedAt || wallet.capabilities.isConnected || wallet.error) {
+      items.push({
+        id: "wallet-session",
+        label: "Wallet session",
+        summary: wallet.capabilities.isConnected
+          ? `Connected as ${formatCompactAddress(wallet.address)} on ${wallet.network ?? "an unknown network"}.`
+          : wallet.error?.message ?? "No wallet session is connected yet.",
+        detail: wallet.provider?.name
+          ? `Provider: ${wallet.provider.name}`
+          : "Open the wallet panel to connect and hydrate a session.",
+        timestampLabel: wallet.lastUpdatedAt
+          ? new Date(wallet.lastUpdatedAt).toLocaleTimeString()
+          : "Awaiting sync",
+        tone: wallet.capabilities.isConnected
+          ? "success"
+          : wallet.error
+            ? "warning"
+            : "neutral",
+      });
+    }
+
+    if (pendingTransaction) {
+      items.push({
+        id: "pending-transaction",
+        label: "Pending wallet action",
+        summary: `${pendingTransaction.operation.replace(/\./g, " ")} is ${pendingTransaction.phase.toLowerCase().replace(/_/g, " ")}.`,
+        detail: pendingTransaction.txHash
+          ? `Tracking ${pendingTransaction.txHash.slice(0, 12)}...`
+          : "Waiting for a transaction hash from the wallet session.",
+        timestampLabel: new Date(pendingTransaction.updatedAt).toLocaleTimeString(),
+        tone: "warning",
+      });
+    }
+
+    if (networkMismatch || networkCheckPending) {
+      items.push({
+        id: "network-recovery",
+        label: "Network recovery",
+        summary: networkCheckPending
+          ? "A network recovery check is running for the connected wallet."
+          : `The wallet is on ${networkSupport.normalizedActual ?? "an unsupported network"}.`,
+        detail:
+          "Use the recovery controls to return to a supported network without leaving the lobby.",
+        timestampLabel: networkCheckPending ? "Checking now" : "Needs action",
+        tone: "error",
+      });
+    }
+
+    return items;
+  }, [
+    activeGames.length,
+    games.length,
+    lastGamesSyncAt,
+    networkCheckPending,
+    networkMismatch,
+    networkSupport.normalizedActual,
+    pendingTransaction,
+    wallet.address,
+    wallet.capabilities.isConnected,
+    wallet.error,
+    wallet.lastUpdatedAt,
+    wallet.network,
+    wallet.provider?.name,
+  ]);
+
   if (loading) {
     return (
       <div className="lobby-loading" role="status" aria-live="polite">
@@ -339,31 +495,40 @@ export const GameLobby: React.FC = () => {
       </div>
     );
   }
-  if (error)
+
+  if (error) {
     return (
-      <div className="lobby-error" role="status" aria-live="polite">
-        <p>Failed to load games: {error}</p>
-        <div style={{ marginTop: "1rem" }}>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleRetryLoadGames}
-            disabled={retrying}
-            data-testid="lobby-error-retry"
-          >
-            {retrying ? "Retrying..." : "Retry"}
-          </button>
-        </div>
-      </div>
+      <RecoverableErrorPanel
+        title="Dashboard data is temporarily unavailable"
+        message={`Failed to load games: ${error}`}
+        description="You can retry inline, or open the wallet panel once the lobby reconnects."
+        onRetry={handleRetryLoadGames}
+        retryLabel={retrying ? "Retrying..." : "Retry"}
+        retryDisabled={retrying}
+        secondaryAction={{
+          label: "Review wallet panel",
+          onClick: () => scrollToElement(walletSectionRef.current),
+        }}
+        testId="lobby-error"
+      />
     );
+  }
 
   return (
     <div className="game-lobby">
+      {!checklistDismissed ? (
+        <DashboardMissionStrip
+          missions={missionItems}
+          sessionLabel={isNewDashboardSession ? "New dashboard session" : "Dashboard session"}
+          onDismiss={handleDismissChecklist}
+        />
+      ) : null}
+
       <section
         aria-label="Wallet and network status"
         className="lobby-dashboard"
       >
-        <div className="lobby-dashboard__col">
+        <div className="lobby-dashboard__col" ref={walletSectionRef}>
           <NetworkGuardBanner
             network={wallet.network}
             normalizedNetwork={networkSupport.normalizedActual}
@@ -402,6 +567,9 @@ export const GameLobby: React.FC = () => {
             <h1 id="games-heading">Live Arena</h1>
             <p>Real-time game status across the Stellar ecosystem.</p>
           </div>
+
+          <QuickActionSurface actions={quickActions} />
+
           <div className="lobby-kpi-strip" data-testid="lobby-kpi-strip">
             <StatusCard
               id="wallet-kpi"
@@ -485,76 +653,84 @@ export const GameLobby: React.FC = () => {
         </div>
       </section>
 
-      {!checklistDismissed && (
-        <FirstTimeChecklist onDismiss={handleDismissChecklist} />
-      )}
+      <div className="lobby-content-grid">
+        <div className="lobby-content-grid__main">
+          <section
+            aria-labelledby="games-heading"
+            className="games-section"
+            ref={gamesSectionRef}
+          >
+            {games.length === 0 ? (
+              <div className="lobby-empty" role="status" aria-live="polite">
+                <div className="empty-icon">No live games</div>
+                <p>No games active at the moment. Check back later!</p>
+              </div>
+            ) : (
+              <div className="games-grid" role="region" aria-label="Active games">
+                {games.map((game) => (
+                  <StatusCard
+                    key={game.id}
+                    id={game.id}
+                    name={game.name}
+                    status={game.status}
+                    wager={game.wager as number | undefined}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
-      <section aria-labelledby="games-heading" className="games-section">
-        {games.length === 0 ? (
-          <div className="lobby-empty" role="status" aria-live="polite">
-            <div className="empty-icon">📭</div>
-            <p>No games active at the moment. Check back later!</p>
-          </div>
-        ) : (
-          <div className="games-grid" role="region" aria-label="Active games">
-            {games.map((game) => (
-              <StatusCard
-                key={game.id}
-                id={game.id}
-                name={game.name}
-                status={game.status}
-                wager={game.wager as number | undefined}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+          <section
+            aria-labelledby="leaderboard-heading"
+            className="leaderboard-section"
+          >
+            <SectionHeader
+              titleId="leaderboard-heading"
+              title="Active Games Leaderboard"
+              description="Switch between standard and compact density to scan live tables faster."
+              actions={
+                <div
+                  className="density-toggle"
+                  role="group"
+                  aria-label="Table density"
+                >
+                  <button
+                    type="button"
+                    className={`density-toggle__button ${tableDensity === "standard" ? "is-active" : ""}`.trim()}
+                    onClick={() => handleDensityChange("standard")}
+                    aria-pressed={tableDensity === "standard"}
+                    data-testid="leaderboard-density-standard"
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    className={`density-toggle__button ${tableDensity === "compact" ? "is-active" : ""}`.trim()}
+                    onClick={() => handleDensityChange("compact")}
+                    aria-pressed={tableDensity === "compact"}
+                    data-testid="leaderboard-density-compact"
+                  >
+                    Compact
+                  </button>
+                </div>
+              }
+            />
 
-      <section
-        aria-labelledby="leaderboard-heading"
-        className="leaderboard-section"
-      >
-        <SectionHeader
-          titleId="leaderboard-heading"
-          title="Active Games Leaderboard"
-          description="Switch between standard and compact density to scan live tables faster."
-          actions={
-            <div
-              className="density-toggle"
-              role="group"
-              aria-label="Table density"
-            >
-              <button
-                type="button"
-                className={`density-toggle__button ${tableDensity === "standard" ? "is-active" : ""}`.trim()}
-                onClick={() => handleDensityChange("standard")}
-                aria-pressed={tableDensity === "standard"}
-                data-testid="leaderboard-density-standard"
-              >
-                Standard
-              </button>
-              <button
-                type="button"
-                className={`density-toggle__button ${tableDensity === "compact" ? "is-active" : ""}`.trim()}
-                onClick={() => handleDensityChange("compact")}
-                aria-pressed={tableDensity === "compact"}
-                data-testid="leaderboard-density-compact"
-              >
-                Compact
-              </button>
-            </div>
-          }
-        />
+            <DataTable
+              columns={leaderboardColumns}
+              data={leaderboardRows}
+              pageSize={5}
+              density={tableDensity}
+              emptyMessage="No leaderboard data available yet."
+              testId="leaderboard-table"
+            />
+          </section>
+        </div>
 
-        <DataTable
-          columns={leaderboardColumns}
-          data={leaderboardRows}
-          pageSize={5}
-          density={tableDensity}
-          emptyMessage="No leaderboard data available yet."
-          testId="leaderboard-table"
-        />
-      </section>
+        <div className="lobby-content-grid__rail" ref={activityRailRef}>
+          <WalletSessionActivityRail items={activityItems} />
+        </div>
+      </div>
 
       <TransactionDetailDrawer
         open={isTransactionDrawerOpen}

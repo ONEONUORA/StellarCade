@@ -26,7 +26,7 @@ describe('AsyncStateBoundary', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('async-state-boundary-retry'));
+    fireEvent.click(screen.getByTestId('async-state-boundary-error-retry'));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
