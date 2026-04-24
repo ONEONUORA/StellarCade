@@ -5,11 +5,11 @@ members = [
     "access-control",
     "bonus-rotator",
     "anti-cheat-bounties",
+    "bounty-escrow",
     "creator-royalties",
     "achievement-badge",
     "ai-generated-game",
     "balance-management",
-    "challenge-ladder",
     "coin-flip",
     "color-prediction",
     "comprehensive-test-suite",
@@ -45,7 +45,6 @@ members = [
     "guild-season",
     "leaderboard",
     "matchmaking-queue",
-    "merch-redemption",
     "multiplayer-room",
     "nft-reward",
     "number-guess",
@@ -83,6 +82,8 @@ members = [
 
 exclude = [
     "higher-lower",
+    "challenge-ladder",
+    "merch-redemption",
 ]
 
 [profile.release]
