@@ -98,6 +98,25 @@ pub fn next_bonus_preview(env: Env, user: Address, as_of_ts: u64) -> NextBonusPr
 
 `NextBonusPreview`
 
+### `expiry_pressure`
+Return expiry pressure information for a player's streak at `as_of_ts`.  Shows how close the streak is to expiring, with pressure levels indicating urgency.
+
+```rust
+pub fn expiry_pressure(env: Env, user: Address, as_of_ts: u64) -> ExpiryPressure
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `user` | `Address` |
+| `as_of_ts` | `u64` |
+
+#### Return Type
+
+`ExpiryPressure`
+
 ### `claim_streak_bonus`
 Claim streak bonus for the current streak. User must authorize. Updates last_claimed_streak.
 

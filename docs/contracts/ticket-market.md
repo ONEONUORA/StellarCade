@@ -112,3 +112,40 @@ pub fn listing_expiry(env: Env, listing_id: u64) -> ListingExpiry
 
 `ListingExpiry`
 
+### `listing_depth_summary`
+Returns active listing depth for one game identifier.  Empty depth is represented with zero counts and prices so consumers do not need to special-case missing state.
+
+```rust
+pub fn listing_depth_summary(env: Env, game_id: Symbol) -> ListingDepthSummary
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `game_id` | `Symbol` |
+
+#### Return Type
+
+`ListingDepthSummary`
+
+### `purchase_eligibility`
+Returns whether a buyer can purchase a listing under the current storage-backed status and expiry rules.  Unknown listings return `exists = false`, `can_purchase = false`, and a `ListingMissing` reason. Expired listings remain readable and report `ListingExpired` without mutating their stored status.
+
+```rust
+pub fn purchase_eligibility(env: Env, listing_id: u64, buyer: Address) -> PurchaseEligibility
+```
+
+#### Parameters
+
+| Name | Type |
+|------|------|
+| `env` | `Env` |
+| `listing_id` | `u64` |
+| `buyer` | `Address` |
+
+#### Return Type
+
+`PurchaseEligibility`
+

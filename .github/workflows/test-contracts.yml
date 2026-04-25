@@ -38,6 +38,10 @@ jobs:
           cd ../emergency-pause && cargo build --target wasm32v1-none --release
           cd ../governance && cargo build --target wasm32v1-none --release
           cd ../contract-role-registry && cargo build --target wasm32v1-none --release
+          cd ../campaign-claims && cargo build --target wasm32v1-none --release
+          cd ../fee-shield && cargo build --target wasm32v1-none --release
+          cd ../streak-ladder && cargo build --target wasm32v1-none --release
+          cd ../creator-drops && cargo build --target wasm32v1-none --release
 
       - name: Run Tests
         run: |
@@ -50,6 +54,10 @@ jobs:
           cd ../emergency-pause && cargo test --locked
           cd ../governance && cargo test --locked
           cd ../contract-role-registry && cargo test --locked
+          cd ../campaign-claims && cargo test --locked
+          cd ../fee-shield && cargo test --locked
+          cd ../streak-ladder && cargo test --locked
+          cd ../creator-drops && cargo test --locked
 
       - name: Verify Contract Documentation
         run: |

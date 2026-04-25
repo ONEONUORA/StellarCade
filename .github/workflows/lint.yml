@@ -33,3 +33,7 @@ jobs:
           cd ../pattern-puzzle && cargo clippy --locked -- -D warnings
           cd ../emergency-pause && cargo clippy --locked -- -D warnings
           cd ../governance && cargo clippy --locked -- -D warnings
+          cd ../campaign-claims && cargo clippy --locked -- -D warnings
+          cd ../fee-shield && cargo clippy --locked -- -D warnings
+          cd ../streak-ladder && cargo clippy --locked -- -D warnings
+          cd ../creator-drops && cargo clippy --locked -- -D warnings
